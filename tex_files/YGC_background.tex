@@ -1,0 +1,144 @@
+
+
+
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\subsection{Building Blocks}
+\label{sec:YGCbackground}
+
+In Section~\ref{sec:YGCbackgroundOT}, we briefly review oblivious transfer.
+In Section~\ref{sec:YGCbackgroundYGC}, we review Yao's Garbled Circuits.
+In Section~\ref{sec:YGCbackgroundOurs}, we describe in more detail our take on the dual execution protocol, and how we avoid leakage to the adversary when the \passwords used are dissimilar.
+
+\subsubsection{Oblivious Transfer (OT)}
+\label{sec:YGCbackgroundOT}
+
+Informally, $1$-out-of-$2$ Oblivious Transfer (see Chou and Orlandi~\cite{LC:ChoOrl15} and citations therein) enables one party (the sender) to transfer exactly one of two secrets to another party (the receiver). 
+The receiver chooses (by index 0 or 1) which secret she wants. 
+The security of the OT protocol guarantees that the sender does not learn this choice bit, and 
+the receiver does not learn anything about the other secret.
+
+\subsubsection{Yao's Garbled Circuits (YGC)}
+\label{sec:YGCbackgroundYGC}
+
+In this section, we give a brief introduction to Yao's garbled circuits~\cite{FOCS:Yao86}.
+We refer to Yakoubov~\cite{YGCintro} for a more detailed description, as well as a summary of some of the Yao's garbled circuits optimizations~\cite{STOC:BeaMicRog90,ICALP:KolSch08,AC:PSSW09,C:KolMohRos14,EC:ZahRosEva15,CCS:BalMalRos16}.
+Informally, Yao's garbled circuits are an asymmetric secure two-party computation scheme.
+They enable two parties with sensitive inputs (in our case, \passwords) to compute a joint function of their inputs (in our case, an augmented version of similarity) without revealing any additional information about their inputs.
+One party ``garbles'' the function they wish to evaluate, and the other evaluates it in its garbled form.
+
+Below, we summarize the garbling scheme formalization of Bellare~\etal~\cite{CCS:BelHoaRog12}, which is a generalization of YGC.
+
+\paragraph{Functionality.}
+
+A garbling scheme $\gbscheme$ consists of a tuple of four polynomial-time algorithms $(\gb, \en, \ev, \de)$:
+\begin{enumerate}
+\item $\gb(1^{\secparam}, \func) \to (\gfunc, \eninp, \deinp)$.
+The garbling algorithm $\gb$ 
+takes in the security parameter $\secparam$ and a circuit $\func$, 
+and returns a garbled circuit $\gfunc$, encoding information $\eninp$,
+and decoding information $\deinp$.
+\item $\en(\eninp, \inp) \to \ginp$.
+The encoding algorithm $\en$ takes in the encoding information $\eninp$ and an input $\inp$, and returns a garbled input $\ginp$.
+\item $\ev(\gfunc, \ginp) \to \goutp$.
+The evaluation algorithm $\ev$ takes in the garbled circuit $\gfunc$ and the garbled input $\ginp$, and returns a garbled output $\goutp$.
+\item $\de(\deinp, \goutp) \to \outp$.
+The decoding algorithm $\de$ takes in the decoding information $\deinp$ and the garbled output $\goutp$, and returns the plaintext output $\outp$.
+\end{enumerate}
+A garbling scheme $\gbscheme = (\gb, \en, \ev, \de)$ is \emph{projective} if the encoding information $\eninp$ consists of $2 \numinputs$ \emph{wire labels} (each of which is essentially a random string), where $\numinputs$ is the number of input bits. 
+Two wire labels are associated with each bit of the input; one wire label corresponds to the event of that bit being $0$, and the other corresponds to the event of that bit being $1$.
+The garbled input includes only the wire labels corresponding to the actual values of the input bits.
+In projective schemes, in order to give the evaluator the garbled input she needs for evaluation,
+the garbler can send her all of the wire labels corresponding to the garbler's input.
+The evaluator can then use OT to retrieve the wire labels corresponding to her own input. 
+
+Similarly, we call a garbling scheme \emph{output-projective} if decoding information $\deinp$ consists of two labels for each output bit, one corresponding to each possible value of that bit.
+The garbling schemes used in this paper are both projective and output-projective.
+
+\paragraph{Correctness.}
+Informally, a garbling scheme $(\gb, \en, \ev, \de)$ is \emph{correct} if it always holds that $\de(\deinp, \ev(\gfunc, \en(\eninp, \inp))) = \func(\inp)$.
+
+\paragraph{Security.}
+\label{sec:ygc_security}
+Bellare \etal~\cite{CCS:BelHoaRog12} describe three security notions for garbling schemes: 
+\emph{obliviousness}, \emph{privacy} and \emph{authenticity}.
+Informally, a garbling scheme $\gbscheme = (\gb, \en, \ev, \de)$ is \emph{oblivious} if a garbled function $\gfunc$ and a garbled input $\ginp$ do not reveal anything about the input $\inp$. 
+It is \emph{private} if additionally knowing the decoding information $\deinp$ reveals the output $\outp$, but does not reveal anything more about the input $\inp$.
+It is \emph{authentic} if an adversary, given $\gfunc$ and $\ginp$, cannot find a garbled output $\goutp' \neq \ev(\gfunc, \ginp)$ which decodes without error.
+
+In \appref{sec:garbledoutputrandomness}, we define a new property of output-projective garbling schemes called \emph{garbled output randomness}.
+Informally, it states that even given one of the output labels, the other should be indistinguishable from random.
+
+\subsubsection{Malicious Security: A New Take on Dual Execution with Privacy-Correctness Tradeoffs}
+\label{sec:YGCbackgroundOurs}
+
+While Yao's garbled circuits are naturally secure against a malicious evaluator, they have the drawback of being insecure against a malicious garbler.
+A garbler can ``mis-garble'' the function, either replacing it with a different function entirely or causing an error to occur in an informative way (this is known as ``selective failure'').
+
+Typically, malicious security is introduced to Yao's garbled circuits by using the cut-and-choose transformation~\cite{JC:LinPin15,C:Lindell13,C:HuaKatEva13}. 
+To achieve a $2^{-\secparam}$ probability of cheating without detection, the parties need to exchange $\secparam$ garbled circuits~\cite{C:Lindell13}.\footnote{
+There are techniques~\cite{C:LinRiv14} that improve this number in the amortized case when many computations are done --- however, this does not fit our setting.}
+Some of the garbled circuits are ``checked'', and the rest of them are evaluated, their outputs checked against one another for consistency. 
+Because of the factor of $\secparam$ computational overhead, though, cut-and-choose is expensive, and too heavy a tool for $\FAKE$.
+Other, more efficient transformations such as LEGO~\cite{TCC:NieOrl09} and authenticated garbling~\cite{CCS:WanRanKat17a} exist as well, but those rely heavily on pre-processing, which cannot be used in $\FAKE$ since it requires advance interaction between the parties.
+
+Mohassel~\etal~\cite{PKC:MohFra06b} and Huang~\etal~\cite{SP:HuaKatEva12} suggest an efficient transformation known as ``dual execution'':
+each party plays each role (garbler and evaluator) once, and then the two perform a comparison step on their outputs in a secure fashion. 
+Dual execution incurs only a factor of $2$ overhead over semi-honest garbled circuits. 
+However, it does not achieve fully malicious security. 
+It guarantees correctness, but reduces the privacy guarantee by allowing
+a malicious garbler to learn one bit of information of her choice. 
+Specifically, if a malicious garbler garbles a wrong circuit, she can use the comparison step to learn one bit about the output of this wrong circuit on the other party's input.
+This one extra bit of information could be crucially important, violating the privacy of the evaluator's input in a significant way. %especially if the input is used in more than one computation.
+
+We introduce a tradeoff between correctness and privacy for boolean functions. 
+For one of the two possible outputs (without loss of generality, `0'), we restore full privacy at the cost of correctness.
+The new privacy guarantee is that if the correct output is `0', then  a malicious adversary cannot learn anything beyond this output, but if the correct output is `1', then she can learn a single bit of her choice. 
+The new correctness guarantee is that a malicious adversary can cause the computation  that should output `1' to output `0' instead, but not the other way around.
+Our privacy--correctness tradeoff is summarized in Figure~\ref{fig:tradeoff}.
+
+\begin{figure}
+\centering
+\begin{tabular}{|cc|c|c|c|}
+\hline
+\multirow{3}{*}{\rotatebox{90}{\centering \cite{PKC:MohFra06b}}} & \multirow{3}{*}{\rotatebox{90}{\centering \cite{SP:HuaKatEva12}}} & Correct Output & Computed Output & Privacy \\ \hhline{~~---} \hhline{~~---}
+& & 1  & 1 OR `cheating' & 1-bit leakage \\ \hhline{~~---}
+& & 0 & 0 OR `cheating' & 1-bit leakage \\ \hline \hline \hline
+\multirow{3}{*}{\rotatebox{90}{\centering Our}} & \multirow{3}{*}{\rotatebox{90}{\centering Protocol}} & Correct Output & Computed Output & Privacy \\ \hhline{~~---} \hhline{~~---}
+& & 1 & 1 OR 0 & 1-bit leakage \\ \hhline{~~---}
+& & 0 & 0 & full privacy \\ \hline
+\end{tabular}
+\caption{The Privacy-Correctness Tradeoff of Dual Execution Protocols for Boolean Functions}
+\label{fig:tradeoff}
+\end{figure}
+
+The main idea of dual execution is to have the two parties independently evaluate one another's circuits, learn the output values, and compare the output labels using a secure comparison protocol.
+This comparison step is simply a check for malicious behavior;
+if comparison fails, then honest party $\aparty$ learns that $\otherparty$ cheated. 
+If the comparison step succeeded, $\otherparty$ might still have cheated --- and gleaned an extra bit of information --- but $\aparty$ is assured that she has the correct output.
+
+In our construction, however, the parties need not learn the output values before the comparison.
+Instead, the parties can compare output labels \emph{assuming} an output of `1', and if the comparison fails, the output is determined to be `0'. 
+More formally, 
+let $\deinp_{\firstindex}[0]$, $\deinp_{\firstindex}[1]$ be the two output labels corresponding to $\firstparty$'s garbled circuit, 
+and $\deinp_{\secondindex}[0]$, $\deinp_{\secondindex}[1]$ be the two output labels corresponding to $\secondparty$'s circuit.
+Let $\goutp_{\secondindex} \in [\deinp_{\secondindex}[0], \deinp_{\secondindex}[1]]$ be the output label learned by $\firstparty$ as a result of evaluation, 
+and $\goutp_{\firstindex} \in [\deinp_{\firstindex}[0], \deinp_{\firstindex}[1]]$ be the label learned by $\secondparty$.
+The two parties securely compare $(\deinp_{\firstindex}[1], \goutp_{\secondindex})$ to $(\goutp_{\firstindex}, \deinp_{\secondindex}[1])$;
+if the comparison succeeds, the output is ``1''.
+
+Whereas in dual execution the comparison step is just a sanity check, here it determines the actual computation output.
+If the correct output is `1', a cheating $\otherparty$ can still learn one bit of information by mis-garbling her circuit; depending on the output of the mis-garbled circuit, the comparison step will either succeed or fail.
+If the comparison fails, $\aparty$ will accept an incorrect output of `0', and never be aware that $\otherparty$ cheated.
+If the correct output is `0', however, there is nothing $\otherparty$ can do to cause the comparison step to succeed, since in order to do this, she would need to use the second output label $\deinp_{\aindex}[1]$ as an input.
+Since the true output was `0', and thus $\goutp_{\aindex} = \deinp_{\aindex}[0]$,
+by the garbled output randomness property of the garbling scheme, $\otherparty$ can't even distinguish $\deinp_{\aindex}[1]$ from random.
+
+Our privacy--correctness tradeoff is perfect for $\FAKE$.
+If the parties' inputs are similar, learning a bit of information about each other's inputs is not problematic, since arguably the small amount of noise in the inputs is a bug, not a feature.
+If the parties' inputs are not similar, however, we are guaranteed to have no leakage at all. 
+We pay for the lack of leakage by allowing a malicious party to force an authentication failure even when authentication should succeed, which either party can do anyway simply by providing an incorrect input.
+
+In Section~\ref{sec:rfeprot}, we describe our Yao's garbled circuit-based $\FAKE$ protocol in detail.
+Note that in this protocol, we omit the final comparison step; instead, we use the output lables ($(\deinp_{\firstindex}[1], \goutp_{\secondindex})$ and $(\goutp_{\firstindex}, \deinp_{\secondindex}[1])$) to compute the agreed-upon key directly (via XOR).

@@ -1,0 +1,399 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+%\leo[inline]{This probably needs to change given that Section~\ref{sec:sketch} is now an appendix.}
+In \appref{sec:sketch}, we show that it is not straightforward to build a secure \FPAKE from primitives that are, by design, well-suited for correcting errors. 
+However, \PAKE protocols are appealingly efficient compared to the garbled circuits used in the prior construction. 
+In this section, we ask whether the failed approach can be rescued in an efficient way, and we answer this question in the affirmative. 
+\sophia[inline]{It would be nice to give a one-sentence recap of the failed approach in the paragraph above}
+
+\subsection{Building Blocks}
+\label{sec:preliminaries}
+
+\subsubsection{Robust Secret Sharing}
+\label{sec:rss}
+We recall the definition of a robust secret sharing scheme, slightly simplified for our purposes from Cramer~\etal~\cite{EC:CDDFS15}.
+%\leo[inline]{We should make clear in this section what (if anything) is new and what is just a summary of prior work.}
+For a vector $c\in\F_q^\pwlen$ and a set $A\subseteq [\pwlen]$, we denote with $c_A$ the projection $\F_q^\pwlen\rightarrow \F_q^{|A|}$, i.e., the sub-vector $(c_i)_{i\in A}$.
+\begin{definition}
+	\label{def:rss}
+	Let $\SEC\in\N$, $q$ a $\SEC$-bit prime, $\F_q$ a finite field and $\pwlen,t,m,r\in\N$ with $t<r\leq \pwlen$ and $m<r$. An $(\pwlen,t,r)_q$ robust secret sharing scheme (\RSS) consists of two probabilistic algorithms $\Share : \F_q \to \F_q^\pwlen$ and $\Reconstruct : \F_q^\pwlen \to \F_q$ with the following properties:
+	\begin{itemize}
+		\item \emph{$t$-privacy}: for any $s,s'\in\F_q, A \subset [\pwlen]$ with $|A|\leq t$, the projections $c_A$ of $c\getsr\Share(s)$ and $c'_A$ of $c'\getsr\Share(s')$ are identically distributed.
+		\item \emph{$r$-robustness}: for any $s\in\F_q, A \subset [\pwlen]$ with $|A|\geq r$, any $c$ output by $\Share(s)$, and any $\tc$ such that $c_A = \tc_A$, it holds that $\Reconstruct(\tc) = s$.
+	\end{itemize}
+\end{definition}
+In other words, an $(\pwlen, t,r)_q$-\RSS is able to reconstruct the shared secret even if the adversary tampered with up to $\pwlen-r$ shares, while each set of $t$ shares is distributed independently of the shared secret $s$ and thus reveals nothing about it. We note that we allow for a gap, i.e., $r\ge t+1$. Schemes with $r > t+1$ are called \emph{ramp} \RSS. 
+
+\begin{definition}[Smoothness]\label{def:smoothness}
+ We say that an $(\pwlen,t,r)_q$-\RSS is
+	\begin{itemize}
+	\item \emph{$m$-smooth} if for any $s\in\F_q, A \subset [\pwlen]$ with $|A|\leq m$, any $c$ output by $\Share(s)$, and any $\tc$ such that $\tc_A = c_A$, $\tc_{\bar A}\getsr \F_q^{\pwlen-|A|}$, for all PPT $\AdvA$ it holds that  
+	\[|\Pr[1\gets\AdvA(1^\SEC,
+	%\RSS,
+	\Reconstruct(\tc))]-\Pr[1\gets\AdvA(1^\SEC,
+	%\RSS,
+	u)]|\]
+	is negligible in $\SEC$, where the probability is taken over the random coins of \AdvA and $\Reconstruct$ and $u\getsr\F_q$.
+	 \item \emph{$m$-smooth on random secrets} if it is $m$-smooth for randomly chosen $s\getsr\F_q$ and the probabilities are additionally taken over the coins consumed by this choice.
+	\end{itemize}
+	%\julia[inline]{Note that for $m=r$ we have ``strong'' separability, and for $m=t$ we have weak separability which is satisfied by MDS codes}
+\end{definition}
+
+\begin{definition}[Strong $t$-privacy]\label{def:strongprivacy}
+ We say that an $(\pwlen,t,r)_q$-\RSS has \emph{strong $t$-privacy}, if for any $s\in\F_q, A\subset [\pwlen]$ with $|A|\leq t$, the projection $c_A$ of $c\getsr\Share(s)$ is distributed uniformly randomly in $\F_q^{|A|}$.
+\end{definition}
+Note that strong $t$-privacy implies $t$-privacy. 
+The opposite does not necessarily hold. 
+(To see that the opposite might not hold, imagine a $\Share$ algorithm creating shares that start with ``I'm a share!''). Also note that, in case of random errors occuring, as long as there are fewer then $t$ undisturbed shares, a strong $t$-private scheme actually hides the locations (and with this also the number) of errors.
+
+%\leo[inline]{Is it ever possible to do this without a gap?}
+
+% For a ramp \RSS as defined above, it is not stated what happens in between the privacy and robustness bounds. For example, one could ask whether it is efficiently detectable whether the adversary tampered with more than $\pwlen-r$ but fewer than $\pwlen-t$ shares (if the adversary tampers with $\pwlen-t$ shares or more, then detection is impossible, because the remaining untampered shares are anyway jointly uniform by $t$-privacy). While we assume that the $\Reconstruct$ procedure always outputs an $\F_q$-element, we supplement an \RSS to capture a weak variant of this property, with only random alterations, in the following definition:
+% 
+% \begin{definition}
+% 	An $(\pwlen,t,r)$-\RSS is said to be separable if for any $s \in \F_q$, $A \subset [\pwlen]$ with $|A|<r$, and $c \getsr \Share(s)$, if $\tc$ is such that $\tc_A = c_A$ and $\tc_{\bA} \getsr \F_q^{\pwlen-|A|}$ with $\tc_i\neq c_i$ for all $i\in \bA$, then $\Reconstruct(\tc)$ outputs a random element in $\F_q$.
+% \end{definition}
+
+%\julia[inline]{I checked, we only need $|A|<r$ for the proof since we get the other information $>t$ from the functionality in form of a ``wrong guess''. Furthermore, an honest party one-time-pads a random session key unknown to the adversary on every share that corresponds to a non-matching \password digit. So $\tc_{\bA} \getsr \F_q^{\pwlen-|A|}$ is also fine. In total, this definition is exactly what we need regarding separability.}
+%\david[inline]{Great! This is what I proved.}
+
+%\leo{Probability over what here? The sharing process? Or is it regardless of the randomness of the sharing process, only $\tc_{\bA}$? }
+%\pad{It's only over $\tc_{\bA}$ (basically, the issue is if enough of the random shares actually happen to be the correct ones and $\Reconstruct(\tc) = s$)}
+
+\subsubsection{Linear Codes}
+A linear $q$-ary code of length $\pwlen$ and rank $\rank$ is a subspace $C$ with dimension $\rank$ of the vector space $\F_q^\pwlen$.
+The vectors in $C$ are called codewords. The size of a code is the number of codewords it contains, and is thus equal to $q^\rank$.
+The weight of a word $w\in\F_q^\pwlen$ is the number of its non-zero components, and the distance between two words is the Hamming distance between them (equivalently, the weight of their difference).
+The minimal distance $d$ of a linear code $C$ is the minimum weight of its non-zero codewords, or equivalently, the minimum distance between any two distinct codewords.
+
+A code for an alphabet of size $q$, of length $\pwlen$, rank $\rank$, and minimal distance $d$ is called an $(\pwlen,\rank,d)_q$-code. Such a code can be used to detect up to $d-1$ errors (because if a codeword is sent and fewer than $d-1$ errors occur, it will not get transformed to another codeword), and correct up to $\lfloor(d-1)/2\rfloor$ errors (because for any received word, there is a unique codeword within distance $\lfloor(d-1)/2\rfloor$).
+For linear codes, the encoding of a (row vector) word $W\in\F_q^\rank$ is performed by an algorithm $C.\Encode:\F_q^\rank\rightarrow \F_q^\pwlen$, which is the multiplication of $W$ by a so-called ``generating matrix'' $G\in\F_q^{\rank\times\pwlen}$ (which defines an injective linear map).
+This leads to a row-vector codeword $W\cdot G=:c\in C\subset\F_q^\pwlen$. 
+
+% \julia[inline]{see what of the next paragraph is still needed}
+% We are interested in codes that have an efficient decoding procedure $C.\Decode:\F_q^\pwlen\rightarrow \F_q^\rank$ that finds the inverse of $C.\Encode$ --- that is, finds the (unique) codeword closer than distance $\lfloor(d-1)/2\rfloor$ to the input, if one exists. 
+% \david[inline]{The inverse only makes sense from $C$, hence only for the closest codeword in $C$.}
+% It if does not, this decoding procedure outputs $\bot$.
+
+The Singleton bound states that for any linear code, it holds that $\rank+d \leq \pwlen+1$. 
+A \emph{maximum distance separable} (or MDS) code satisfies $\rank+d = \pwlen+1$. 
+Since $d = \pwlen-\rank+1$, MDS codes are fully described by the parameters $(q,\pwlen,\rank)$.
+Such an $(\pwlen,\rank)_q$-MDS code can
+correct up to $\lfloor (\pwlen-\rank)/2\rfloor$ errors; it can detect if there are errors whenever there are no more than $\pwlen-\rank$ of them. 
+For a matrix $G$ generating an MDS code, any set of $k$ columns of $G$ are linearly independent.
+
+For a thorough introduction to linear codes and proofs of all statements in this short overview we refer the reader to \cite{Roth:2006:ICT:1137784}.
+
+Observe that a linear code, due to the linearity of its encoding algorithm, is not a primitive designed to hide anything about the encoded message (e.g., a popular choice for the generating matrix is $G:=(I_k|\ast)$ with $I_k$ being the $k\times k$ identity matrix). However, we show in the following lemma how to turn an MDS code into a \RSS scheme with additional smoothness guarantees.
+
+\julia[inline]{I think we have to restrict $\Decode$. I.e., we cannot use $\Decode$ that, upon detecting that there are x errors, decodes to $W=\vec{0}$ to indicate failure. For $t$-smoothness, it would be enough to assume that on input a random $\F_q^\pwlen$ word, $\Decode$ decodes to a uniformly random $W$. For $r-1$-smoothness on random secrets it would be enough to assume that $\Decode$ somehow picks $k$ shares, computes the corresponding inverse of the submatrix of $G$ and then outputs $C G^{-1}$. The latter would also be enough for regular smoothness.}
+
+%The following lemma is well-known from the literature. Essentially, it states that MDS codes actually do hide an encoded, uniformly random message if enough errors occur.
+%\begin{lemma}\label{lemma:MDShidesErrors}
+%Let $J\subset\{1,\dots,\pwlen\}$ with $|J|=j\leq \rank\in\N$. Then for any $(q,\pwlen,\rank)$ MDS code $(\Encode,\Decode)$ it holds that
+%$\Encode(\Ux_{\F_q^\rank})_J = \Ux_{\F_q^j}$,
+%where $\Ux_{\F_q^\rank}$ denotes the uniform distribution over $\F_q^\rank$.
+%\end{lemma}
+%
+%\begin{proof}
+%First consider the case of $j=\rank$. 
+%Since for an MDS code every $\rank$ elements of the codeword are sufficient for theoretically decoding (otherwise, there would be two codewords that agreed on $\rank$ elements and thus had distance $\pwlen-\rank<d$), the mapping $\Encode(\cdot)_J$  is invertible, and therefore bijective, and thus the lemma holds. The case of $j<\rank$ follows because a projection of the distribution $\Ux_{\F^\rank}$ onto $j$ of its $k$ coordinates is also uniform.
+%\end{proof}
+%
+
+\begin{lemma}\label{MDSisSeparableRSS}
+Let $C$ be a $(\pwlen+1,\rank)_q$-MDS code.
+We set $L$ to be the last column of the generating matrix $G$ of the code $C$ and we denote by $C'$ the $(\pwlen,\rank)_q$-MDS code whose generating matrix $G'$ is $G$ without the last column. Let further algorithm $\Decode$ of the MDS code $C'$ be of the following form:
+\begin{enumerate}
+ \item On input a word $c\in\F_q^\pwlen$, $\Decode$ chooses $D\subseteq[n]$ with $|D|=k$. 
+ \item Let $G'_D$ denote the matrix obtained from $G'$ by eliminating all columns with indices not in $D$. $\Decode$ now outputs $c_D\cdot G'^{-1}_D$.
+\end{enumerate}
+Let $\Share$ and $\Reconstruct$ work as follows:
+\begin{itemize}
+\item $\Share(s)$ for $s\in\F_q$ first chooses a random row vector $W\in\F_q^\rank$ such that $W \cdot L = s$, and outputs $c \gets C'.\Encode(W)$ (equivalently, we can say that $\Share(s)$ chooses a uniformly random codeword of $C$ whose last coordinate is $s$, and outputs the first $\pwlen$ coordinates as $c$).
+\item $\Reconstruct(w)$ for $w\in\F_q^\pwlen$ first runs $C'.\Decode(w)$. If it gets a vector $W'$, then output $s = W' \cdot L$, otherwise output $s\getsr \F_q$.
+\end{itemize}
+Then $\Share$ and $\Reconstruct$ form a $t$-smooth, strongly $t$-private $(\pwlen,t,r)_q$-\RSS for $t=\rank-1$ and $r = \lceil(\pwlen+\rank)/2\rceil$ that is $(r-1)$-smooth on random secrets.
+\end{lemma}
+%\leo[inline]{We don't need a random $L$ and the resulting complexity/probability in the proof. Instead, we can simply start with $C'$, which is $(\pwlen+1, \rank)$ MDS code, and use the 0th column of the generating matrix for $L$ and the rest for $C$ (the paragraph about Reed-Solomon below says that, essentially). Moreover, then $\Share$ becomes very simple---simply pick a random codeword in $C'$ that has the 0th coordinate equal to $s$, and let the shares be the remaining coordinates. And the proof of $t$-privacy is immediate by $(t+1)$-wise independence (i.e., $k$-wise independence) of the coordinates of an MDS code, which is what Lemma above (now commented out) essentially says. }
+%\david[inline]{Done, and I will use your previous Lemma to do this proof!}
+\begin{proof}
+Let us consider all required properties from Definitions~\ref{def:rss}, \ref{def:smoothness} and~\ref{def:strongprivacy}.
+\begin{itemize}
+
+\item strong $t$-privacy: Assume $|A| = t$ (privacy for smaller $A$ will follow immediately by adding arbitrary coordinates to it to get to size $t$). Let $J = A\cup\{n+1\}$; note that $|J|=t+1=k$. Note that for the code $C$, any $\rank$ coordinates of a codeword determine uniquely the input to $\Encode$ that produces this codeword (otherwise, there would be two codewords that agreed on $\rank$ elements and thus had distance $\pwlen-\rank+1$, which is less than the minimum distance of $C$).  Therefore, the mapping  given by $\Encode_J: \F_q^\rank\to\F_q^{|J|}$ is bijective; thus coordinates in $J$ are uniform when the input to $\Encode$ is uniform. The algorithm $\Share$ chooses the input to $\Encode$ uniformly subject to fixing the coordinate $n+1$ of the output. Therefore, the remaining coordinates (i.e., the coordinates in $A$) are uniform.
+\item $r$-robustness: Note that $C$ has minimum distance $n-k+2$, and therefore $C'$ has minimum distance $n-k+1$ (because dropping one coordinate reduces the distance by at most 1). Therefore, $C'$ can correct $\lfloor (n-k)/2\rfloor = n-r$ errors. Since $c_A = \tc_A$ and $|A| \ge r$, there are at most $n-r$ errors in $\tc$, so the call to $C'.\Decode(\tc)$ made by $\Reconstruct(\tc)$ will output $\tilde{W}=W$. Then $\Reconstruct(\tc)$ will output $s = \tilde{W}\cdot L = W\cdot L$.
+% \item Separability: we start from $c = \Share(s)$, which means that $c = W\cdot G'$ for a random vector $W\getsr\F_q^\rank$, such that $s = W\cdot L$.
+% Now, we assume that (strictly) more than $n-r$ components of $c$ have been randomly altered in $c'$, but different from the initial value: the indices in $\bA$, for $A \subset [\pwlen]$ and $|A|<r$. The reconstruction procedure first makes a decoding of $c'$ into $W'$ so that Hamming distance $d(c',c'')$ is not more than $(\pwlen-\rank)/2$\sophia{What is $d(\dot,\dot)$ here?}\david{Hamming distance}, for $c'' = W'\cdot G'$, or $\bot$. In the former case, it then outputs $s' = W'\cdot L$. In the latter case, it outputs a random $s'\getsr\F_q$.
+% Let us analyze the vector $W'$ that can be obtained by this procedure (in the former case):
+% first, $W'$ must be the inverse of some $c'_B$, with $B \subset [\pwlen]$ and $|B|=\rank$, with the corresponding $\rank\times\rank$-submatrix of $G'$, otherwise $d(c',c'') > \pwlen-\rank \geq (\pwlen-\rank)/2$;
+% then for every possible such $B$, we first write $L = \sum_{i\in B} \alpha_i C_i$, where $C_i$ is the $i$-th column of $G'$, and $\alpha_i\neq 0$ for all $i\in B$\footnote{Since $G$ is an MDS code, we know that any $\rank$-subset of the columns is a basis, so $L$, the first column of $G$, cannot be a linear combination of any $\rank-1$ columns.}, then:
+% either $B\cap \bA = \emptyset$,
+% \expl{In this case, all matching entries of $c'$ and $c''$ (indicated by $B$) are entries whose indices are not in $\bA$, thus in $A$, thus entries that were \emph{not} disturbed in $c$. So $c_B=c'_B=c''_B$, and thus $c$ and $c'$ are within distance $k$, and thus $c''=c$ since there is only one codeword within distance $k$ of $c$.} 
+% so $W'= W$ since one inverts on the initial sub-vector, then $d(c',c'')>r$; or $B\cap \bA \neq \emptyset$. Let us call $j\in B\cap \bA$: $c'_j$ is random and different from $c_j$. For this $B$, one gets a candidate $W'$ and $s' = W'\cdot L = \sum \alpha_i c'_i$, with $c'_j$ randomly chosen.
+% As a consequence, $s'$ is uniformly distributed.
+% As a consequence, for any subset $B$, one either rejects the decoding (which would output a random $s'$), or one outputs a random\footnote{We do not claim that all the possible outputs are independently random from each other, but for a too large random alteration of $c$, the reconstruction necessarily leads to a uniform output (or $\bot$).} element in $\F_q$.
+\item $t$-smoothness: to prove this, we show that disturbing one share uniformly random already randomizes the output of $\Reconstruct$. Let $D$ denote the set chosen by $\Decode$. Since every codeword is uniquely determined by $k$ elements, the mappings $f_i:\F_q\rightarrow \F_q$,  $x\mapsto \Encode(G'^{-1}_D(c))_{n+1}$ with $c\gets \F_q^k, c_i=x$ are bijective for all $i\in[k]$. Since $t=k-1$, $\tc_D$ contains at least one entry that is chosen uniformly at random and thus the claim follows from the fact that the output of $\Reconstruct$ is computed as $\Encode(G'^{-1}_D(\cdot))$. 
+\expl{Beispiel mit Gerade: $k=2$, gegeben ein echter share und ein uniformly random ist als weiterer punkt auf der gerade *alles* möglich, das heißt das mapping distorted share -> s ist eins-zu-eins. uniformly random distortion führt dann zu uniformly random s. benutzen dass auch C MDS ist, damit s sich auch ändert und nicht z.b. redundanter echter share ist (der sich nicht ändern würde).}
+\item $(r-1)$-smoothness on random secrets: first, it holds that $r-1> k$ and thus $\tc$ contains more than $k$ undisturbed shares. We distinguish two cases. Either $D$ chosen by $\Decode$ contains only undisturbed shares (i.e., $D\subseteq A$), then $\Reconstruct$ will output $s$ which is distributed uniformly random in $\F_q$. Else, $D\not\subseteq A$. In this case, at least one element of $\tc_D$ is distributed uniformly random and the randomness of the output of $\Reconstruct$ follows as in the proof of $t$-smoothness.
+\end{itemize}
+\end{proof}
+Note that the Shamir's secret sharing scheme is exactly the above construction with Reed-Solomon codes~\cite{DBLP:journals/cacm/McElieceS81}. Further, we are not aware of any decoding algorithm for linear MDS codes that cannot be adopted to comply with our restrictions on $\Decode$.
+
+\subsubsection{Implicit-Only \PAKE}
+\label{sec:lipake}
+
+\PAKE protocols can have two types of authentication: implicit authentication, where at the end of the protocol the two parties share the same key if they used the same \password and random independent keys otherwise; or explicit authentication where, in addition, they actually know which of the two situations they are in.
+A \PAKE protocol that only achieves implicit authentication can provide explicit authentication by adding key-confirmation flows~\cite{EC:BelPoiRog00}.
+
+The standard \PAKE functionality $\FpwKE$ from~\cite{EC:CHKLM05}\iftoggle{full}{ (see Figure~\ref{fig:func-PAKE})}{} is designed with explicit authentication in mind, or at least considers that  success or failure will later be detected by the adversary when he will try to use the key. Thus, it reveals to the adversary whether a \password guess attempt was successful or not. However, some applications could require a \PAKE that does not provide any feedback, and so does not reveal the situation before the keys are actually used. Observe that, regarding honest players, $\FpwKE$ already features implicit authentication since the players do not learn anything but their own session key.
+
+\paragraph{Definition of implicit-only \PAKE.}
+We introduce a new notion called implicit-only \PAKE or \iPAKE (see Figure~\ref{fig:func-iPAKE}). 
+The \iPAKE ideal functionality is designed to implement implicit authentication with respect to the adversary as well as honest players,  by not providing the adversary with any feedback in response to a password guess.
+% This ideal functionality models the absence of feedback: the two players get back the session keys, but nothing else. 
+% \julia[inline]{This is misleading, since this was also the case in $\FpwKE$.}
+Of course, in many cases, the parties and the adversary can later check whether their session keys match or not, and so whether the \passwords were the same or not. 
+We stress that this is not leakage from the \PAKE protocol itself, but from the environment. 
+
+In addition to the changes we already make to the $\FpwKE$ ideal functionality in our \FPAKE functionality description, we make one more change in our \iPAKE functionality.
+In response to a \TestPwd query, the functionality silently updates the internal state of the record (from \web{fresh} to either \web{compromised} or  \web{interrupted}), meaning that the query outcome is not given to the adversary \Sim.
+%Second, the \NewKey query is modified so that the adversary gets to choose the key for a non-corrupted party only if it uses the correct \password (corruption of the other party is no longer enough), as already discussed earlier. 
+Without going into details, it is clear that the simulation of an honest party is hard if the simulator \Sim does not know whether the password it extracted from the corrupt party is correct or not. 
+However, the simulator gets help from the functionality, which sets honest parties' keys appropriately.
+%Regarding the output, i.e., the question whether the session keys computed by both parties should match or look random, the simulator thus gets help from our functionality by modifying the \NewKey queries.
+
+% The adversary can indeed control, or at least bias, the session key computed by a partner of a corrupted player, but only if the two \passwords are the same. Otherwise, there is no reason to control it, contrarily to what was allowed in $\FpwKE$. 
+% \julia[inline]{explain why we need/want this with \liPAKE. it's the case where a corrupted player participates in the protocol but the simulator does not issue a dictionary attack, for some reason we do not remember. can this be fixed by modifying the functionality such that it ignores NewKey queries if the session is not ``ready''? or if it initializes $key=\bot$? checked: cannot be fixed like this.}
+%\julia[inline]{the following does not contain any useful information and is really hard to process. The latter sentence is already contained above.
+%If its partner $\otherparty$ is corrupted, either a \NewSession-query has been sent for it, which means that $\otherparty$ got adaptively corrupted afterwards, and only matching \passwords could provide it some control on the session key computed by $\aparty$. Otherwise, no \NewSession-query has been issued for $\otherparty$ and only a \TestPwd-query can impact the key received by $\otherparty$.
+%Without a \TestPwd-query, in the latter case, $\otherparty$ receives a random session key. 
+
+\begin{figure}[tb]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The functionality $\FiPAKE$ is parameterized by a security parameter~$\SEC$.
+	  It interacts with an adversary~$\Sx$ and the (dummy) parties $\firstparty$ and $\secondparty$ via the following queries:\\[-1.8em]
+      \begin{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\NewSession,\sid,\apw,\role)$ from party $\aparty$\mathversion{normal}:}
+        \begin{itemize}
+          \item Send $(\NewSession,\sid,\aparty,\role)$ to \Sim;
+          \item If one of the following is true, record~$(\aparty,\apw)$ and mark this record \web{fresh}:
+          \begin{itemize}
+             \item This is the first \NewSession query %and $\role = \rolesender$
+             \item This is the second \NewSession query %, $\role = \rolereceiver$ 
+             and there is a record~$(\otherparty,\otherpw)$
+          \end{itemize}
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\TestPwd,\sid,\aparty,\apw')$ from \Sim\mathversion{normal}:} \\
+        If there is a \web{fresh} record~$(\aparty,\apw)$, then: 
+        \begin{itemize}
+          \item If $\apw=\apw'$, mark the record \web{compromised};
+          \item If $\apw\neq\apw'$, mark the record \web{interrupted}.
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+          \mathversion{bold}$(\NewKey,\sid,\aparty,\sk)$ from \Sim, where $|\sk|=\SEC$:\mathversion{normal} } \\
+        If there is no record of the form~$(\aparty,\apw)$, or if this is not the first \NewKey query for~$\aparty$, then ignore this query. 
+	Otherwise:
+        \begin{itemize}
+          \item If at least one of the following is true, then output~$(\sid,\sk)$ to player~$\aparty$:
+          \begin{itemize}
+           \item The record is \web{compromised}
+           \item $\aparty$ is corrupted
+           \item The record is \web{fresh}, $\otherparty$ is corrupted, and there is a record~$(\otherparty,\otherpw)$ with $\apw=\otherpw$
+          \end{itemize}
+          \item If this record is \web{fresh}, both parties are honest, there is a record~$(\otherparty,\otherpw)$ with $\apw=\otherpw$, a key~$\sk'$ was sent to~$\otherparty$,
+          and $(\otherparty,\otherpw)$ was \web{fresh} at the time, then output~$(\sid,\sk')$ to~$\aparty$;
+          \expl{If $\otherparty$ is corrupted with matching key, it gets sk from the adversary in the case above, so this case here (implicitly) only triggers for honest sessions.}
+          \item In any other case, pick a new random key~$\sk'$ of length~$\SEC$ and send~$(\sid,\sk')$ to~$\aparty$.
+          \item Mark the record $(\aparty,\apw)$ as \web{completed}.
+        \end{itemize}
+      \end{itemize}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{Functionality $\FiPAKE$}\label{fig:func-iPAKE}
+\end{figure}
+We further alter this functionality to allow for public labels, as shown in \appref{app:lipake}\iftoggle{full}{, Figure~\ref{fig:func-liPAKE}}{}. 
+The resulting functionality $\FliPAKE$ idealizes what we call \emph{labeled implicit-only \PAKE} (or $\liPAKE$ for short), resembling the notion of labeled public key encryption as formalized in \cite{EPRINT:Shoup01}. In a nutshell, labels are public authenticated strings that are chosen by each user individually for each execution of the protocol. 
+Authentication here means that tampering with the label can be efficiently detected. Such labels can be used to, e.g., distribute public information such as public keys reliably over unauthenticated channels. 
+
+\paragraph{A UC-Secure \liPAKE Protocol.}
+In the seminal paper by Bellovin and Merritt~\cite{SP:BelMer92}, the Encrypted Key Exchange protocol (EKE) is proposed, which is essentially a Diffie-Hellman~\cite{DifHel76} key exchange. The two flows of the protocol are encrypted using the \password as the encryption key with an appropriate symmetric encryption scheme. The EKE protocol has been further formalized by Bellare \etal~\cite{EC:BelPoiRog00} under the name EKE2. We present its labeled variant in Figure~\ref{fig:EKE2}. The idea of appending the label to the symmetric key is taken from \cite{RSA:ACCP08}. We prove security of this protocol in the $\Fro,\Fic,\Fcrs$-hybrid model. That is, we use an ideal random oracle functionality $\Fro$ to model the hash function, and ideal cipher functionality $\Fic$ to model the encryption scheme and assume a publicly available common reference string modeled by $\Fcrs$. Formal definitions of these functionalities are given in \appref{appendix:setup}.
+
+\begin{figure}[tbp]
+  \centering
+  \begin{fboxenv}
+  \begin{tabular}{rcl}
+     $A(\pw\in\F_\alphabetsize)$ &   & $B(\pw'\in\F_\alphabetsize)$ \\ \hline \\
+     $x \getsr \F_P$, $\ell\gets\mathcal{L}$, $X \gets g^{x}$ \\
+     $X^*\gets \Encrypt_{\pw||\ell}(X)$
+        & $\Rsflow{\ell,X^*}$ &
+           $y \getsr \F_P$, $\ell'\gets\mathcal{L}$, $Y \gets g^y$ \\
+        & $\Lsflow{\ell',Y^*}$ &
+           $Y^*\gets \Encrypt_{\pw'||\ell'}(Y)$ \\
+     $Z \gets \Decrypt_{\pw||\ell'}(Y^*)^{x}$ 
+        && $Z' \gets \Decrypt_{\pw'||\ell}(X^*)^{y}$ \\
+     $k\gets H(X^*,Y^*,Z)$
+        && $k'\gets H(X^*,Y^*,Z')$ \\
+     output $(\ell',k)$ 
+        && output $(\ell,k')$\\
+  \end{tabular}
+  \end{fboxenv}
+  \caption{Protocol EKE2, in a group $\G = \langle g \rangle$ of prime order $P$, with a hash function $H:\G^3\rightarrow \{0,1\}^k$ and a symmetric cipher $\Encrypt,\Decrypt$ onto $\G$ for keys in $\F_p\times\mathcal{L}$, where $\mathcal{L}$ is the label space.}\label{fig:EKE2}
+\vspace*{-1em}\end{figure}
+
+\begin{theorem}
+\label{theorem:lipake}
+If the \CDH assumption holds in $\G$, the protocol EKE2 depicted in Figure~\ref{fig:EKE2} securely realizes $\FliPAKE$ in the $\Fro,\Fic,\Fcrs$-hybrid model with respect to static corruptions.
+\end{theorem}
+We note that this result is not surprising, given that other variants of EKE2 have already been proven to UC-emulate $\FpwKE$. Intuitively, a protocol with only two flows not depending on each other does not leak the outcome to the adversary via the transcript, which explains why EKE2 is implicit-only. Hashing of the transcript keeps the adversary from biasing the key unless he knows the correct \password or breaks the ideal cipher. For completeness, we include the full proof in \appref{app:lipake}.
+
+
+
+\subsection{Construction}
+We show how to combine an \RSS with a signature scheme and an \liPAKE to obtain an \FPAKE. 
+The high-level idea is to fix the issue that arose in the protocol from~\appref{sec:sketch} due to \passwords being used as one-time pads. 
+Instead, we first expand the \password characters to keys --- which we refer to as ``character keys'' --- with large entropy using \liPAKE. 
+The resulting character keys are then used as one-time pads for shares of a chosen output session key. 
+We also apply known techniques from the literature, i.e., adding signatures and labels to prevent man-in-the-middle attacks. 
+Our full protocol is depicted in Figure~\ref{fig:FAKERSS}. 
+It works as follows:
+
+\begin{center}
+\begin{figure}[tbp]
+  \centering
+  \scriptsize
+  \begin{fboxenv}
+  \begin{tabular}{rcl}
+     Sender $(\pw\in\F_\alphabetsize^\pwlen)$ & & Receiver $(\pw'\in\F_\alphabetsize^\pwlen)$ \\ \hline \\
+     $(\vk,\sk)\getsr\SigGen(1^\SEC)$ & &  \\
+%      $\ell\gets\vk$ & & $\ell'\gets\vk'$\\
+	   & $\xrightarrow{\;(\vk,\pw_t)_t\;} \hspace{1.5cm} \xleftarrow{\;(\varepsilon,\pw'_t)_t\;}$ &  \\ 
+	  for $t=1,\dots,\pwlen$ & $\fbox{\liPAKE}$& for $t=1,\dots,\pwlen$ \\ 
+	    & $\xleftarrow{\;(\varepsilon,K_t)_t\;} \hspace{1.5cm} \xrightarrow{\;(\ell_t,K'_t)_t\;}$ &  abort if $\ell_r\neq\ell_s$ for\\ 
+	   & & any $r,s$ or $\ell_1\notin\mathcal{VK}$ \\ 
+	  Let $K:=(K_t)_{t\in[n]}$ & & Let $K':=(K'_t)_{t\in[n]}$\\
+	  $U\getsr \F_q, C \gets \Share(U)$ & &  \\
+	  $E \gets C + K$ &  & \\
+	  $\sigma_E\gets\Sign(\vk,E)$ & $\Rflow{E,\sigma_E,\vk}$  &  abort if $\vk\neq\ell_1$ \\  
+	  output $\key\gets U$  & & or $\Vfy(\vk,\sigma_E,E)=0$\\\\
+	    &  & $U' \gets \Reconstruct(E-K')$\\
+%	  \texttt{if} $V=\bot$ \texttt{then} $\key\getsr \F_q$  & & \texttt{if} $U'=\bot$ \texttt{then} $\key'\getsr \F_q$ \\
+	   & & output $\key'\gets U'$
+    \end{tabular}
+  \end{fboxenv}
+  \caption{Protocol $\PfakeRSS$ where $q\approx 2^\SEC$ is a prime number and $+$ denotes the group operation in $\F_q^\pwlen$. $\varepsilon$ denotes the empty string. $(\Share,\Reconstruct)$ is a Robust Secret Sharing scheme with $\Share:\F_q\rightarrow \F_q^\pwlen$, and $(\SigGen\rightarrow\mathcal{VK}\times\mathcal{SK},\Sign,\Vfy)$ is a signature scheme. The parties repeatedly execute a labeled implicit-only \PAKE protocol with label space $\mathcal{VK}$ and key space $\F_q$, which takes inputs from $\mathcal{VK}\times\F_\alphabetsize$. If at any point an expected message fails to arrive (or arrives malformed), the parties output a random key. }\label{fig:FAKERSS}
+\vspace*{-1em}\end{figure}
+\end{center}
+
+%version with dual execution:
+% \begin{center}
+% \begin{figure}[tbp]
+%   \centering
+%   \scriptsize
+%   \begin{fboxenv}
+%   \begin{tabular}{rcl}
+%      $A(\pw\in\F_\alphabetsize^\pwlen)$ & & $B(\pw'\in\F_\alphabetsize^\pwlen)$ \\ \hline \\
+%      $(\vk,\sk)\getsr\SigGen(1^\SEC)$ & & $(\vk',\sk')\getsr\SigGen(1^\SEC)$ \\
+% %      $\ell\gets\vk$ & & $\ell'\gets\vk'$\\
+% 	   & $\xrightarrow{\;(\vk,\pw_t)_t\;} \hspace{1.5cm} \xleftarrow{\;(\vk',\pw'_t)_t\;}$ &  \\ 
+% 	  for $t=1,\dots,\pwlen$ & $\fbox{\liPAKE}$& for $t=1,\dots,\pwlen$ \\ 
+% 	  abort if $\ell'_t\neq\ell'_s$ for  & $\xleftarrow{\;(\ell'_t,(K_t,L_t))_t\;} \hspace{1.5cm} \xrightarrow{\;(\ell_t,(K'_t,L'_t))_t\;}$ &  abort if $\ell_t\neq\ell_s$ for\\ 
+% 	  any $t,s$ or $\ell'_1\notin\mathcal{VK}$ & & any $t,s$ or $\ell_1\notin\mathcal{VK}$ \\ 
+% 	  Let $K:=(K_t)_{t\in[n]}$ & & Let $L':=(L'_t)_{t\in[n]}$\\ \\
+% 	  $U\getsr \F_q, C \gets \Share(U)$ & & $V'\getsr \F_q, D' \gets \Share(V')$ \\
+% 	  $E \gets C + K$ &  & $F \gets D' + L'$\\
+% 	  $\sigma_E\gets\Sign(\vk,E)$ & $\LRsbflow{E,\sigma_E,\vk}{F,\sigma_F,\vk'}$  & $\sigma_F\gets\Sign(\vk',F)$ \\ 
+% 	  abort if $\vk'\neq\ell'_1$ & & abort if $\vk\neq\ell_1$\\ 
+% 	  or $\Vfy(\vk',\sigma_F,F)=0$ & & or $\Vfy(\vk,\sigma_E,E)=0$\\\\
+% 	  $V \gets \Reconstruct(F-L)$ &  & $U' \gets \Reconstruct(E-K')$\\
+% %	  \texttt{if} $V=\bot$ \texttt{then} $\key\getsr \F_q$  & & \texttt{if} $U'=\bot$ \texttt{then} $\key'\getsr \F_q$ \\
+% 	  output $\key\gets U+V\in\F_q$ & & output $\key'\gets U'+V'\in\F_q$
+%     \end{tabular}
+%   \end{fboxenv}
+%   \caption{Protocol $\PfakeRSS$ where $q\approx 2^\SEC$ is a prime number and $+$ denotes the group operation in $\F_q^\pwlen$. $(\Share,\Reconstruct)$ is a Robust Secret Sharing scheme with $\Share:\F_q\rightarrow \F_q^\pwlen$, and $(\SigGen\rightarrow\mathcal{VK}\times\mathcal{SK},\Sign,\Vfy)$ is a signature scheme. The parties repeatedly execute a labeled implicit-only \PAKE protocol with label space $\mathcal{VK}$ and key space $\F_q^2$, which takes inputs from $\F_\alphabetsize$. If at any point an expected message fails to arrive (or arrives malformed), the parties output a random key. }\label{fig:FAKERSS}
+% \vspace*{-1em}\end{figure}
+% \end{center}
+
+
+% 
+% \sophia[inline]{I made this an enumerated list to match the YGC section format}
+\begin{enumerate}
+\item 
+In the first phase, the two parties aim at enhancing their \passwords to a vector of high-entropy character keys. 
+For this, the \passwords are viewed as vectors of characters. 
+The parties repeatedly execute a \PAKE on each of these characters separately. 
+The \PAKE will ensure that the character key vectors held by the two parties match in all positions where their \passwords matched, and are independent in all other positions. 
+\item
+In the second phase of the protocol one party, the sender, will pick the final session key uniformly at random and send it in such a way that it reaches the other party only if enough of the character keys match.
+This is done by applying an \RSS to the key, and sending it to the other party using the character key vector as a one time pad.
+The robustness property of the \RSS ensures that a few non-matching password digits do not prevent the receiver from recovering the sender's key.
+\end{enumerate}
+
+When using the MDS code--based \RSS which is described in Lemma~\ref{MDSisSeparableRSS}, the one-time pad encryption of the shares (which form a codeword) can be viewed as the code-offset construction for information reconciliation (aka secure sketch)~\cite{CCS:JueWat99,EC:DodReySmi04} applied to the character key vectors. 
+We present our construction in terms of \RSS, but we could instead present this construction using information reconciliation. 
+The syndrome construction of secure sketches~\ref{MDSisSeparableRSS} can also be used here instead of the code-offset construction.
+
+\subsection{Security of {$\PfakeRSS$}} 
+We show that our protocol realizes functionality $\FFAKE^M$ in the $\Flipake$-hybrid model. In a nutshell, the idea is to simulate without the \passwords by adjusting the character keys outputted by $\Flipake$ to the mask of the \passwords, which is leaked by $\FFAKE^M$. 
+
+%\expl{Old version for an $(\pwlen,k)$-code: Decoding can correct up to $\lfloor (\pwlen-k)/2\rfloor$ errors, so we need $\delta=\lfloor (\pwlen-k)/2\rfloor+1$. Also, the code can detect up to $\pwlen-k$ errors, so we similarly need $\gamma=\pwlen-k+1=d$.}
+%\leo{To understand this theorem, the reader needs to plug in parameters from Lemma~\ref{MDSisSeparableRSS}. Can we do this for the reader?  Can we reformulate the theorem statement to read ``any $\delta$ and $\gamma = 2(\delta-1)$'' (assuming the statement of Lemma~\ref{MDSisSeparableRSS} remains unchanged)? And then, of course, somewhere in the proof sketch we should say we plug in Lemma~\ref{MDSisSeparableRSS} }
+
+\begin{theorem}
+\label{theorem:fake2}
+If $\RSS:=(\Share:\F_q \to \F_q^\pwlen,\Reconstruct:\F_q^\pwlen \to \F_q)$ is a strongly $t$-private, $t$-smooth $(\pwlen,t,r)_q$-\RSS that in addition is $(r-1)$-smooth on random secrets, and $(\SigGen,\Sign,\Vfy)$ is an EUF-CMA secure one-time signature scheme, protocol $\fPAKE_{RSS}$ securely realizes $\FFAKE^M$ with $\gamma = \pwlen-t-1$ and $\delta = \pwlen-r$ in the $\Flipake$-hybrid model with respect to static corruptions. 
+\end{theorem} 
+
+In particular, if we wish key agreement to succeed as long as there are fewer than $\delta$ errors, we instantiate \RSS using the construction of Lemma~\ref{MDSisSeparableRSS} based on a $(\pwlen+1, \rank)_q$ MDS code, with $\rank = \pwlen-2\delta$. This will give $r  = \lceil (\pwlen+\rank)/2 \rceil = \pwlen - \delta$, so $\delta$ will be equal to $\pwlen-r$, as required. It will also give $\gamma = \pwlen-t-1 = 2\delta$.
+
+We thus obtain the following corollary:
+
+\begin{corollary}
+For any $\delta$ and $\gamma = 2\delta$, 
+given an $(\pwlen+1,\rank)_q$-MDS code for $\rank = \pwlen-2\delta$ (with minimal distance $d = \pwlen - \rank +2$) and an EUF-CMA secure one-time signature scheme, protocol $\fPAKE_{RSS}$ securely realizes $\FFAKE^M$ in the $\Flipake$-hybrid model with respect to static corruptions. 
+\end{corollary}
+
+
+\paragraph{Proof sketch of Theorem~\ref{theorem:fake2}.} We start with the real execution of the protocol and indistinguishably switch to an ideal execution with dummy parties relaying their inputs to and obtaining their outputs from $\FFAKE^M$. To preserve the view of the distinguisher (the environment \Env), a simulator \Sim plays the role of the real world adversary by controlling the communication between $\FFAKE^M$ and \Env. During the proof, we build $\FFAKE^M$ and \Sim by subsequently randomizing \passwords (since the final simulation has to work without them) and session keys (since $\FFAKE^M$ hands out random session keys in certain cases). We have to tackle the following difficulties, which we will describe in terms of attacks. 
+
+\begin{itemize}
+ \item Passive attack: in this attack, \Env picks two \passwords and then observes the transcript and outputs of the protocol, without having access to any internal state of the parties. We show that \Env cannot distinguish between transcript and outputs that were either produced using \Env's \passwords or random \passwords. Regarding the outputs, we argue that even in the real execution the session keys were chosen uniformly at random (with \Env not knowing the coins consumed by this choice) as long as the \RSS either reconstructs the uniformly random secret correctly or outputs a different uniformly random value. Depending on the distance of the passwords this is guaranteed either by robustness or smoothness for random secrets, both of which are properties of the \RSS. Regarding the transcript, randomization is straightforward using properties of the one-time pad.
+ \item Man-in-the-middle attack: in this attack, \Env injects a malicious message into a session of two honest parties. There are several ways to secure protocols that have to run in unauthenticated channels and are prone to this attack. Basically, all of them introduce methods to bind messages together to prevent the adversary from injecting malicious messages. To do this, we need the \emph{labeled} version of our \iPAKE and a one-time signature scheme\footnote{Instead of labels and one-time signature, one could just sign all the messages, as would be done using the split-functionality~\cite{C:BCLPR05}, but this would be less efficient. This trade-off, with labels, is especially useful when we use a \PAKE that admits adding labels basically for free, as it is the case with the special \PAKE protocol we use.}. Unless \Env is able to break a one-time-signature scheme, this attack always results in an abort.  
+ \item Honest-but-curious/Active attack: in this attack, \Env corrupts one of the parties. The simulator will get help from $\FFAKE^M$ by issuing a \TestPwd query, which will inform him whether the passwords used by both parties are close and, if so, in which positions they match (i.e., their mask). 
+ \begin{itemize}
+  \item If the sender is honest, we show how to use this information to simulate the transcript. Note that knowledge of the mask is necessary since, due to corruption, \Env can now actually decrypt the one-time pad and thus the transcript reveals the positions of the errors in the \passwords, which are of course already known to \Env. If the simulator does not learn a mask, then the passwords are too far away and it follows from the strong privacy of the RSS that real and simulated transcript are indistinguishable from \Env's view. Note that here, since \Env is aware of the non-matching \password positions, it is crucial that strong privacy guarantees that the locations of all errors are hidden from \Env.
+  \item If the receiver is honest and \Env injects a malicious message on behalf of the sender, the simulator uses the mask to compute the output of the honest receiver. If no mask is obtained then again the \passwords are too far away from each other, and the smoothness property of the \RSS (for arbitrarily chosen secrets) says that the receiver's output can be simulated by chosing it uniformly at random. 
+  \end{itemize}
+\end{itemize}
+One interesting subtlety that arises is the usage of the \iPAKE. Observe that the UC security notion for a regular \PAKE as defined by Canetti~\etal~\cite{EC:CHKLM05} and recalled in \appref{appendix:setup} provides an interface to the adversary to test a \password once and learn whether it is right or wrong. Using this notion, our simulator would have to answer to such queries from \Env. Since this is not possible without $\FFAKE^M$ leaking the mask all the time, it is crucial to use the \iPAKE variant that we introduced in section~\ref{sec:lipake}.
+Using this stronger notion, the adversary is still allowed one \password guess which may affect the output, but the adversary learns nothing more about the outcome of his guess than he can infer from whatever access he has to the outputs alone. Since our protocol uses the outputs of the \PAKE as one-time pad keys, it is intuitively clear that by preventing \Env from getting additional leakage about these keys, we protect the secrets of honest parties.
+
+
+\subsection{Further Discussion: Removing Modeling Assumptions}
+\expl{It is clear that if we do the symmetric construction, adaptive corruptions become difficult. However, for the asymmetric construction we currently have, this is unclear.}
+%\subsubsection{Adaptive Corruptions}
+%Adaptive security of our protocol is not achievable without relying on additional assumptions.
+% To see this, consider the following attack: \Env starts the protocol with two equal \passwords and, without corrupting anyone, silently observes the transcript produced by \Sim using random \passwords. 
+%Afterwards, \Env corrupts both players to learn their internal state. 
+%\Sim must now produce these internal states.
+%\Sim may choose the vectors of character keys (which should be equal, since the \passwords are equal). 
+%Note that \Sim is committed to the one-time pad encryption of the session key, since that is a part of the transcript, and signatures are not equivocable. 
+%Since error-free sharings are sparse in $\F_q^\pwlen$, the probability that there exists a vector of character keys such that the one-time pad decryption under those character keys gives a perfect sharing is negligible. 
+%Thus, there do not exist a plausibe session key $U\in\F_q$ that explains the transcript\footnote{We note that additional assumptions like assuming erasures can enable an adaptive security proof.}.
+
+%\subsubsection{Removing Modeling Assumptions}
+All of the assumptions in our protocol come from the realization of the $\Flipake$ functionality. 
+The $\liPAKE$ protocol from section~\ref{sec:lipake} requires a random oracle, an ideal cipher and a CRS. We note that we can remove everything except for the CRS by, e.g., taking the \PAKE protocol introduced by Katz and Vaikuntanathan~\cite{TCC:KatVai11}. This protocol also securely realizes our $\Flipake$ functionality\footnote{In a nutshell, their protocol is implicit-only for the same reason as the $\liPAKE$ protocol we use here: there are only two flows that do not depend on each other, so the transcript cannot reveal the outcome of a guess unless it reveals the \password to anyone. Regarding the session keys, usage of a hash function takes care of randomizing the session key in case of a failed dictionary attack. Furthermore, the protocol already implements labels. A little more detailed, looking at the proof by Katz and Vaikuntanathan~\cite{TCC:KatVai11}, the simulator does not make use of the answer of \TestPwd to simulate any messages. Regarding the session key that an honest player receives in an corrupted session, they are chosen to be random in the simulation (in Expt$_3$). Letting this happen already in the functionality makes the simulation independent of the answer of \TestPwd also regarding the computation of the session keys.}.
+% \julia[inline]{check KV11! it is not clear why it should have the property that a key of an honest player in a corrupted session is random, since it does not use a hash function! Checked: it uses an HPS, this randomizes upon a wrong \password guess.}
+However, it is more costly than our $\liPAKE$ protocol since both messages each contain one non-interactive zero knowledge proof. 
+
+Since \fPAKE implies a regular \PAKE (simply set $\delta = 0$), Canetti~\etal~\cite{EC:CHKLM05} give strong evidence that we cannot hope to realize $\FFAKE$ without a \CRS.
+

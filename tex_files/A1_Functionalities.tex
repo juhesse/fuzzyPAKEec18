@@ -1,0 +1,188 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\heading{Common Reference String}
+The Common Reference String (CRS) functionality was already defined in~\cite{AC:Canetti07}.
+We recall it in Figure~\ref{functionality:CRS} for completeness.
+Note that we do not let \Fcrs check whether a party is allowed to obtain the CRS --- it is assumed public.
+\begin{figure}[htbp]
+\noindent
+\fbox{\begin{minipage}{\linewidth-9pt}
+The functionality $\Fcrs^{\mathcal{D}}$ is parameterized with a distribution $\mathcal{D}$ and proceeds as follows:
+\begin{itemize}
+ \item Upon receiving $(\sid,\web{crs})$:
+ \begin{itemize}
+ \item
+ If there is no value $r$ recorded, then choose and record a value $r\getsr\mathcal{D}$.
+ \item
+ Reply with $(\sid,r)$.
+ \end{itemize}
+\end{itemize}
+\end{minipage}}
+\caption{Functionality $\Fcrs$} \label{functionality:CRS}
+\end{figure}
+
+\heading{Random Oracles}
+The Random Oracle (RO) functionality was already defined by Hofheinz and M{\"u}ller-Quade in~\cite{TCC:HofMul04}.
+We recall it in Figure~\ref{functionality:RO} for completeness.
+It is clear that the random oracle model UC-emulates this functionality.
+\begin{figure}[htbp]
+\noindent
+\fbox{\begin{minipage}{\linewidth-9pt}
+The functionality $\Fro$ proceeds as follows, running on security
+parameter~$k$, with a set of (dummy) parties $\Party_1,\ldots,\Party_n$ and an adversary~\Sim:
+\begin{itemize}
+\item
+$\Fro$ keeps a list~$L$ (which is initially empty) of pairs of
+bit strings.
+\item
+Upon receiving a value $(\sid,m)$  (with $m\in\{0,1\}^*$) from some
+party~$\Party_i$ or from~\Sim, do:
+    \begin{itemize}
+    \item
+    If there is a pair $(m,\tilde{h})$ for some $\tilde{h}\in\{0,1\}^k$
+    in the list~$L$, set $h := \tilde{h}$.
+    \item
+    If there is no such pair, choose uniformly $h\in\{0,1\}^k$ and store
+    the pair $(m,h)\in L$.
+    \end{itemize}
+Once $h$ is set, reply to the activating machine (i.e., either $\Party_i$
+or \Sim) with $(\sid,h)$.
+\end{itemize}
+\end{minipage}}
+\caption{Functionality $\Fro$} \label{functionality:RO}
+\end{figure}
+
+\heading{Ideal Cipher}
+An ideal cipher~\cite{EC:BelPoiRog00} is a block cipher that takes a plaintext or a ciphertext as input.
+We describe the ideal cipher functionality \Fic in Figure~\ref{functionality:IC}, in the same vein as the above random oracle functionality.
+It is clear that the ideal cipher model UC-emulates this functionality.
+Note that this functionality characterizes a perfectly random permutation for each key by ensuring injectivity for each query simulation: to this aim, it uses a list $L$ and projections $M_\sk$ and $C_\sk$, that are global, independently of the $\sid$.
+\begin{figure}[htbp]
+\noindent
+\fbox{\begin{minipage}{\linewidth-10pt}
+The functionality \Fic takes as input the security
+parameter~$k$, and interacts with an adversary~\Sim and with a set
+of (dummy) parties $\Party_1,\ldots,\Party_n$ by means of these queries:
+\begin{itemize}
+\item
+    \Fic keeps a (initially empty) list~$L$ containing
+$3-$tuples of bit strings and two (initially empty) sets $C_{\sk}$ and $M_{\sk}$ for every $\sk$.
+(The sets are not created until $\sk$ is first used, thus avoiding the need to instantiate exponentially many sets.)
+\item
+    \textbf{\mathversion{bold}Upon receiving a query $(\sid,\Encrypt,\sk,m)$
+    (with $m\in\{0,1\}^k$) from some party~$\Party_i$ or~\Sim, 
+do:\mathversion{normal}}
+    \begin{itemize}
+    \item
+        If there is a $3-$tuple $(\sk,m,\tilde{c})$ for some
+$\tilde{c}\in\{0,1\}^k$ in the list~$L$, set $c := \tilde{c}$.
+    \item
+        If there is no such record, choose uniformly $c \in \{0,1\}^k\backslash C_{\sk}$
+        which is the set consisting of ciphertexts not already used with $\sk$.
+        Next, it stores the $3-$tuple $(\sk,m,c)\in L$ and sets both
+        $M_{\sk}\gets M_{\sk}\cup \{m\}$ and $C_{\sk}\gets C_{\sk}\cup \{c\}$.
+    \end{itemize}
+Once $c$ is set, reply to the activating machine with $(\sid,c)$.
+\item
+    \textbf{\mathversion{bold}Upon receiving a query $(\sid,\Decrypt,\sk,c)$  (with
+$c\in\{0,1\}^k$) from some party~$\Party_i$ or~\Sim, do:\mathversion{normal}}
+    \begin{itemize}
+    \item
+        If there is a $3-$tuple $(\sk,\tilde{m},c)$ for some
+$\tilde{m}\in\{0,1\}^k$ in~$L$, set $m := \tilde{m}$.
+    \item
+        If there is no such record, choose uniformly $m \in \{0,1\}^k\backslash M_{\sk}$
+        which is the set consisting of plaintexts not already used with
+        $\sk$. Next, it stores the $3-$tuple $(\sk,m,c)\in L$ 
+and sets both
+        $M_{\sk}\gets M_{\sk}\cup \{m\}$ and $C_{\sk}\gets C_{\sk}\cup \{c\}$.
+    \end{itemize}
+Once $m$ is set, reply to the activating machine with $(\sid,m)$.
+
+\end{itemize}
+\end{minipage}}
+\caption{Functionality \Fic} \label{functionality:IC}
+\end{figure}
+
+\heading{Oblivious Transfer}
+The Oblivious Transfer (OT) functionality was defined by Canetti \etal~\cite{STOC:CLOS02}.
+We recall it in Figure~\ref{fig:func-OT}.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The functionality $\Fot$ is parameterized by a security parameter~$\secparam$.
+      It interacts with an adversary~$\Sx$ and the players $\sender$ (the sender) and $\receiver$ (the receiver) via the following queries:
+      \begin{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\Send,\sid,x_0,x_1)$ from $\sender$\mathversion{normal}}, where $x_0,x_1\in\bits^{\secparam}$, record the tuple $(x_0,x_1)$.
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\Receive,\sid,i)$ from $\receiver$\mathversion{normal}:} \\
+        If there is a record~$(x_0,x_1)$, then send $(\sid,x_i)$ to $\receiver$ and $\sid$ to $\server$, and halt.
+        Otherwise, ignore the query.
+      \end{itemize}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{Functionality $\Fot$}\label{fig:func-OT}
+\end{figure}
+
+\heading{Password-Authenticated Key Exchange}
+The initial \PAKE functionality $\FpwKE$ has been defined by Canetti \etal~\cite{EC:CHKLM05}. We recall it in Figure~\ref{fig:func-PAKE}. We stress that this functionality immediately leaks the result of the \TestPwd-query, which models explicit authentication; when the adversary tries a password, it learns whether the guess was correct or not.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The functionality $\FpwKE$ is parameterized by a security parameter~$k$.
+      It interacts with an adversary~$\Sx$ and a set of (dummy) parties $\Party_1,\ldots,\Party_n$ via the following queries:
+      \begin{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\NewSession,\sid,\Party_i,\Party_j,\pw,\role)$ from party $\Party_i$\mathversion{normal}:}
+        \begin{itemize}
+          \item Send $(\NewSession,\sid,\Party_i,\Party_j,\role)$ to \Sim;
+          \item If one of the following is true, record~$(\Party_i,\Party_j,\pw)$ and mark this record \web{fresh}:
+          \begin{itemize}
+             \item This is the first \NewSession query %and $\role = \rolesender$
+             \item This is the second \NewSession query %, $\role = \rolereceiver$ 
+             and there is a record~$(\Party_j,\Party_i,\pw')$
+          \end{itemize}
+%          \item If this is the first \NewSession query,
+%          or if this is the second \NewSession query and there is a record~$(\Party_j,\Party_i,\pw')$,
+%          then record~$(\Party_i,\Party_j,\pw)$ and mark this record \web{fresh}.
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\TestPwd,\sid,\Party_i,\pw')$ from \Sim\mathversion{normal}:} \\
+        If there is a \web{fresh} record~$(\Party_i,\Party_j,\pw)$, then do: 
+        \begin{itemize}
+          \item If $\pw=\pw'$, mark the record \web{compromised}, and reply to $\Sx$ with \emph{correct guess};
+          \item If $\pw\neq\pw'$, mark the record \web{interrupted}, and reply to $\Sx$ with \emph{wrong guess}.
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+          \mathversion{bold}$(\NewKey,\sid,\Party_i,\sk)$ from the \Sim, where $|\sk|=k$:\mathversion{normal} } \\
+        If there is a record of the form~$(\Party_i,\Party_j,\pw)$, and this is the first \NewKey query for~$\Party_i$, then:
+        \begin{itemize}
+	  \item If this record is \web{compromised}, or either $\Party_i$ or $\Party_j$ is corrupted, then output~$(\sid,\sk)$ to player~$\Party_i$;
+          \item If this record is \web{fresh}, there is a record~$(\Party_j,\Party_i,\pw')$ with $\pw=\pw'$, a key~$\sk'$ was sent to~$\Party_j$,
+          and $(\Party_j,\Party_i,\pw)$ was \web{fresh} at the time, then output~$(\sid,\sk')$ to~$\Party_i$;
+          \item In any other case, pick a new random key~$\sk'$ of length~$k$ and send~$(\sid,\sk')$ to~$\Party_i$.
+        \end{itemize}
+        Either way, mark the record $(\Party_i,\Party_j,\pw)$ as \web{completed}.
+      \end{itemize}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{Functionality $\FpwKE$}\label{fig:func-PAKE}
+\end{figure}
+
+In our paper, we start from this functionality to derive the basic functionality \FAKE, in Section~\ref{sec:model}, after a few changes:
+\begin{itemize}
+\item we consider only two parties --- $\firstparty$ and $\secondparty$ ---, which is enough since universal composability takes care of ensuring that a two-party functionality remains secure in a multi-party world;
+\item we do not allow the adversary to set $\aparty$'s key if $\otherparty$ is corrupted but did not guess $\aparty$'s password.
+We make this change in order to protect an honest $\aparty$ from, for instance, revealing sensitive information to an adversary who did not successfully guess her password, but did corrupt her partner.
+\end{itemize}

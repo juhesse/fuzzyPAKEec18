@@ -1,0 +1,134 @@
+% !TeX root = ../main.tex
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+Consider key agreement by two parties who start out knowing a common secret (which we refer to as ``\password'', a generalization of ``password'').
+These parties may face several complications: 
+(1) the \password may come from a non-uniform, low-entropy distribution, and 
+(2) the two parties' copies of the \password may have some noise, and thus not match exactly.
+%We study the problem of key agreement by two parties who start out knowing a common, but noisy, non-uniform and low-entropy, \password.  
+The use of such \passwords for security has been extensively studied; examples include biometrics and other human-generated data~\cite{daugman2004,zviran1993comparison,brostoff2000passfaces,ellison2000protecting,mayrhofer2009shake,monrose2002password,ICALP:KolRac08}, physically unclonable functions (PUFs)~\cite{pappu2002physical,CCS:GCVD02,CHES:TSSGVW06,suh2007physical,yu2010secure}, noisy channels~\cite{Wyner75},  quantum information~\cite{bennett1988privacy}, and sensor readings of a common environment \cite{Hanetal17,Hanetal18}.
+ 
+ \paragraph{The Noiseless Case.}
+When the starting secret is not noisy (i.e., the same for both parties), existing approaches work quite well. 
+The case of low-entropy secrets is covered by \emph{password-authenticated key exchange} (\PAKE), in a long line of work the first formal models for which were introduced by Bellare~\etal~\cite{EC:BelPoiRog00} and Boyko~\etal~\cite{EC:BoyMacPat00}. 
+A \PAKE protocol allows two parties to agree on a shared high-entropy key if and only if they hold the same short password. 
+Even though the password may have low entropy, \PAKE ensures that off-line dictionary attacks are impossible.
+Roughly speaking, an adversary has to participate in one on-line interaction for every attempted guess at the password. 
+Because key agreement is not usually the final goal, \PAKE protocols need to be securely composable with whatever protocols (such as authenticated encryption) use the output key. 
+This composability has been achieved by universally composable (UC) PAKE defined by Canetti \etal~\cite{EC:CHKLM05} and implemented in several follow-up works.
+
+In the case of high-entropy secrets, off-line dictionary attacks are not a concern, which enables more efficient protocols. 
+If the adversary is passive, randomness extractors~\cite{STOC:NisZuc93} do the job.
+The case of active adversaries is covered by the literature on so-called robust extractors defined by Boyen~\etal~\cite{EC:BDKOS05} and, more generally, by many papers on privacy amplification protocols secure against active adversaries, starting with the work of Maurer~\cite{EC:Maurer97}.
+Composability for these protocols is less studied; in particular, most protocols leak information about the \password itself, in which case reusing the \password over multiple protocol executions may present problems~\cite{CCS:Boyen04} (with the exception of~\cite{EC:CFPRS16}).
+\julia[inline]{exception regarding what? leakage of information? less studied? reusing is problematic?}
+
+\paragraph{The Noisy Case.}
+When the \password is noisy (i.e., the two parties have slightly different versions of it), 
+this problem has been studied only for the case of high-entropy \passwords. 
+A long series of works on information-reconciliation protocols (started by Bennett~\etal~\cite{bennett1988privacy}) and
+their one-message variants called fuzzy extractors 
+(defined by Dodis~\etal~\cite{DBLP:journals/siamcomp/DodisORS08}, further enhanced for active security starting by Renner~\etal~\cite{EC:RenWol04}) 
+achieves key agreement when the \password has a lot of entropy and not too much noise. 
+Unfortunately, these approaches do not extend to the low-entropy setting and are not designed to prevent off-line dictionary attacks.
+
+Constructions for the noisy case depend on the specific noise model. 
+The case of binary Hamming distance --- when the $\pwlen$ \password bits held by the two parties are the same at all but $\delta$ locations --- is the best studied. 
+Most existing constructions require, at a minimum, that the \password should have at least $\delta$ bits of entropy. 
+This requirement rules out using most kinds of biometric data as the \password --- for example, estimates of entropy for iris scans (transformed into binary strings via wavelet transforms and projections) are considerably lower than the amount of errors that need to be tolerated~\cite[Section 5]{blanton2009biometric}. 
+Even the PAKE-based construction of Boyen \etal~\cite{EC:BDKOS05} suffers from the same problem.
+
+One notable exception is the construction of Canetti~\etal~\cite{EC:CFPRS16}, which does not have such a requirement, but places other stringent limitations on the probability distribution of \passwords.
+In particular, because it is a one-message protocol, it cannot be secure against off-line dictionary attacks.
+
+\subsection{Our Contributions}
+We provide definitions and constant-round protocols for key agreement from noisy \passwords that:
+\begin{itemize}
+\item Resist off-line dictionary attacks and thus can handle low-entropy \passwords,
+\item Can handle a variety of noise types and have high error-tolerance, and
+\item Have well specified composition properties via the UC framework~\cite{FOCS:Canetti01}.
+\end{itemize}
+
+Instead of imposing entropy requirements or other requirements on the distribution of \passwords, our protocols are secure as long as the adversary cannot guess a \password value that is sufficiently close. 
+There is no requirement, for example, that the amount of \password entropy is greater than the number of errors; in fact, one of our protocols is suitable for iris scans.
+Moreover, our protocols prevent off-line attacks, so each adversarial attempt to get close to the correct \password requires an on-line interaction by the adversary. 
+Thus, for example, our protocols can be meaningfully run with \passwords whose entropy is only 30 bits---something not possible with any prior protocols for the noisy case.
+
+\paragraph{New Models.}
+Our security model is in the Universal Composability (UC) Framework of Canetti~\cite{FOCS:Canetti01}. 
+The advantage of this framework is that it comes with a composability theorem that ensures that the protocol stays secure even when run in arbitrary environments, including arbitrary parallel executions. 
+Composability is particularly important for key agreement protocols, because key agreement is rarely the ultimate goal.
+The agreed-upon key is typically used for some subsequent protocol---for example, to instantiate a secure channel. 
+Further, this framework allows to us to give a definition that is indifferent to how the initial \passwords are generated.
+We have no entropy requirements or constraints on the \password distribution; rather, security is guaranteed as long as the adversary's input to the protocol is far enough from the correct \password.
+
+As a starting point, we use the definition of UC security for \PAKE from Canetti~\etal~\cite{EC:CHKLM05}. 
+The $\PAKE$ ideal functionality is defined as follows:
+the secret \passwords (called ``passwords'' in \PAKE) of the two parties are the inputs to the functionality, and two random keys, which are equal if and only if the two inputs are equal, are the outputs. 
+The main change we make to \PAKE is enhancing the functionality to give equal keys even if the two inputs are not equal, as long as they are close enough. 
+We also relax the security requirement to allow one party to find out some information about the other party's input---perhaps even the entire input---if the two inputs are close.
+This relaxation makes sense in our application: if the two parties are honest, then the differences between their inputs are a problem rather than a feature, and we would not mind if the inputs were in fact the same. 
+The benefit of this relaxation is that it permits us to construct more efficient protocols. 
+(We also make a few other minor changes which will be described in Section~\ref{sec:model}.)
+We call our new UC functionality ``Fuzzy Password-Authenticated Key Exchange'' or \FAKE.
+%\pad[inline]{Shouldn't we mention at least a bit the other changes/simplifications we made from Canetti's model? The 2 partyness, the issue with adversarial keys when one party is corrupted, etc.}
+%\julia[inline]{I don't think that belongs here. It's really a sublety in the definition of UC KE functionalities, and has nothing to do with fuzziness. All this should be explained in the security model section, where we explain our design choices.}
+%\pad[inline]{It has nothing to do with fuzziness, but it is still a contribution (though, not a major one I agree). Maybe that is less "sellable", but I always feel actually improving/reviewing/questionning things is good, instead of always creating new notions}
+
+\paragraph{New Protocols.}
+The only prior PAKE-based protocol for the noisy setting by Boyen \etal~\cite{EC:BDKOS05}, although more efficient than ours, does not satisfy our goal.
+In particular, it is not composable, because it reveals information about the secret \passwords (we demonstrate this formally in \appref{sec:sketch}).
+Because some information about the \passwords is unconditionally revealed, high-entropy \passwords are required.
+Thus, in order to realize our definition for arbitrary low-entropy \passwords, we need to construct new protocols.
+
+Realizing our \FAKE definition % --- even not allowing one party to find out any information about the other's input---
+is easy using general two-party computation techniques for protocols with malicious adversaries and without authenticated channels~\cite{C:BCLPR05}. 
+However, we develop protocols that are considerably more efficient: our definitional relaxation allows us to build protocols that achieve security against malicious adversaries but cost just a little more than the generic two-party computation protocols that achieve security only against honest-but-curious adversaries (i.e., adversaries who do not deviate from the protocol, but merely try to infer information they are not supposed to know).
+
+Our first construction uses Yao's garbled circuits~\cite{FOCS:Yao86,CCS:BelHoaRog12} and oblivious transfer (see Chou and Orlandi~\cite{LC:ChoOrl15} and references therein).
+The use of these techniques is standard in two-party computation.
+However, by themselves they give protocols secure only against honest-but-curious adversaries. 
+In order to prevent malicious behavior of the players, one usually applies the cut-and-choose technique~\cite{TCC:LinPin11}, which is quite costly: to achieve an error probability of $2^{-\secparam}$, the number of circuits that need to be garbled increases by a factor of $\secparam$, and the number of oblivious transfers that need to be performed increases by a factor of $\secparam / 2$. 
+%We avoid this heavy step.
+We show that for our special case, to achieve malicious security, it suffices to repeat the honest-but-curious protocol twice (once in each direction), incurring only a factor of $2$ overhead over the semi-honest case. %(plus small overhead due to the techniques of \cite{C:BCLPR05} for working with unauthenticated channels).
+\footnote{
+Gasti~\etal~\cite{Gasti2016} similarly use Yao's garbled circuits for continuous biometric user authentication on a smartphone.
+Our approach can eliminate the third party in their application, at the cost of requiring two garbled circuits instead of one.
+As far as we know, ours is the first use of garbled circuits in the two-party fully malicious setting without calling on an expensive transformation.
+%They are the first to use Yao's garbled circuits in a way that offers malicious security without an expensive transformation.
+%However, they do so by introducing a third party who assists with the computation. 
+}
+Mohassel~\etal~\cite{PKC:MohFra06b} and Huang~\etal~\cite{SP:HuaKatEva12} suggest a similar technique (known as ``dual execution''), but at the cost of leaking a bit of the adversary's choice to the adversary.
+In contrast, our construction leaks nothing to the adversary at all (as long as the \passwords are not close).
+This construction works regardless of what it means for the two inputs to be ``close,'' as long as the question of closeness can be evaluated by an efficient circuit.
+
+Our second construction is for the Hamming case: the two $\pwlen$-character \passwords have low Hamming distance if not too many characters of one party's \password are different from the corresponding characters of the other's \password. 
+The two parties execute a \PAKE protocol for each position in the string, obtaining $\pwlen$ values each that agree or disagree depending on whether the characters of the \password agree or disagree in the corresponding positions. 
+It is important that at this stage, agreement or disagreement at individual positions remains unknown to everyone; we therefore make use of a special variant of \PAKE which we call \emph{implicit-only \PAKE} 
+(we give a formal UC security definition of implicit-only \PAKE and show that it is realized by the \PAKE protocol of Bellovin and Merritt~\cite{SP:BelMer92} and Abdalla~\etal~\cite{RSA:ACCP08}). 
+This first step upgrades Hamming distance over a potentially small alphabet to Hamming distance over an exponentially large alphabet. 
+We then secret-share the ultimate output key into $\pwlen$ shares using a robust secret sharing scheme, and encrypt each share using the output of the corresponding $\PAKE$ protocol. 
+
+The second construction is more efficient than the first in the number of rounds, communication, and computation. 
+However, it works only for Hamming distance. 
+Moreover, it has an intrinsic gap between functionality and security: if the honest parties need to be within distance $\delta$ to agree, then the adversary may break security by guessing a secret within distance $2\delta$.
+\julia[inline]{Dennis: this paragraph leaves a bad feeling about the second construction. Julia: a quick fix would be to turn it around, first state the disadvantages then the advantage?}
+See Figure~\ref{fig:comparison} for a comparison between the two constructions.
+
+%The advantages of our protocols are similar to the advantages of UC PAKE: like UC PAKE, our protocols provide composability, protection against off-line attacks, the ability to use low-entropy inputs and handle more general models of noise.\sophia{You mean secret distributions, not noise, right? Noise is specific to FAKE, not PAKE?} 
+%These advantages come at a price of efficiency.  
+%Our protocols require 2-6 rounds of interaction, as opposed to many single-message protocols in the literature~\cite{refs}.\sophia{What do these achieve? Not FAKE --- so what are we comparing to?}
+%They are also more computationally demanding that most existing protocols for the noisy case, requiring one public-key operation per input bit for the first protocol, and per input character for the second protocol (we emphasize that they are less computationally demanding than the protocols based on general two-party computation~\cite{refs} or general-purpose obfuscation~\cite{refs}). 
+
+The advantages of our protocols are similar to the advantages of universally composable \PAKE:
+They provide composability, protection against off-line attacks, the ability to use low-entropy secret inputs, and handle any distribution of those inputs. 
+And, of course, because we construct \emph{fuzzy} \PAKE, our protocols can handle noisy inputs---including many types of noisy inputs that could not be handled before. 
+Our first protocol can handle any type of noise as long as the notion of ``closeness'' can be efficiently computed,
+whereas most prior work was for Hamming distance only.
+However, these advantages come at the price of efficiency.
+Our protocols require 2--5 rounds of interaction, as opposed to many single-message protocols in the literature~\cite{DKKRS12,EC:CFPRS16,WCDJR17}.
+They are also more computationally demanding than most existing protocols for the noisy case, requiring one public-key operation per input character. % bit for the first protocol, and per input character for the second protocol.
+We emphasize, however, that our protocols are much less computationally demanding than the protocols based on general two-party computation, as already discussed above, or general-purpose obfuscation, as discussed in~\cite[Section 4.3.4]{C:BCKP14}.
+
+

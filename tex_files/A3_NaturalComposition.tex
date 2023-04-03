@@ -1,0 +1,32 @@
+% !TeX root = ../main.tex
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+A natural idea for building a \FAKE is the use of a fuzzy extractor~\cite{EC:DodReySmi04, CCS:Boyen04}, that allows to extract a common secret from two strings close enough, and to compose it with a regular \PAKE. This approach was introduced in~\cite{EC:BDKOS05} (Section 4). Their protocol uses the code-offset construction of a fuzzy sketch~\cite{EC:DodReySmi04}, a.k.a. fuzzy commitment~\cite{CCS:JueWat99}, to implement a fuzzy-extractor as a two-party primitive. It is presented in Figure~\ref{fig:FuzzySketch}.
+
+\begin{figure}[tb]
+  \centering
+  \begin{fboxenv}
+	  \begin{tabu}{rcl}
+     \firstparty$(\pw\in\F_q^n)$ &   & \secondparty$(\pw'\in\F_q^n)$ \\ \hline \\
+	 $w \getsr \F_q^k, c\gets \Share(w) \in \F_q^n$ & & \\
+	 $s \gets c + \pw$ & $\Rflow{s}$ & $c' \gets s + \pw'$ \\
+	 & & $w' \gets \Reconstruct(c')$ \\
+	 $K$ & $\LRflow{}{\PAKE(w,w')}$ & $K'$ \\
+	 $\sk \gets K$ & & $\sk'\gets K'$
+    \end{tabu}
+  \end{fboxenv}
+  \caption{A First Natural Construction (with code-offset fuzzy sketch and \PAKE)}\label{fig:FuzzySketch}
+\end{figure}
+
+\begin{theorem}
+ The construction from Figure~\ref{fig:FuzzySketch} cannot securely realize $\FFAKE^{P}$.
+\end{theorem}
+\begin{proof}
+Consider the following attack by \Env. \Env sends a randomly chosen $\pw$ as input to an honest $\firstparty$ and obtains a sketch $s$ from \AdvA. It then computes $c\gets s-\pw$ and outputs $1$ if $c$ is in the image of $\Share$. In the real world, this happens with probability $1$. Now assume there is a simulator \Sim outputting a simulated sketch $\tilde{s}$ in the ideal world. Since \Sim does not get to learn $\pw$ unless it succeeds at a \TestPwd query, observe that this output may not depend on $\pw$ except with some small (but non-negligible) probability $p$, namely the probability of guessing a \password that makes $\FFAKE^{P}$ output $\pw$. Thus, with probability $1-p\approx 1$, $\tilde{c}:=\tilde{s}-\pw$ is randomly distributed in $\F_q^n$ and lies in the image of $\Share$ only with probability $1/q^{mn-l}$. More formally, the probability that \Env outputs $1$ in the ideal world is
+ \begin{align*}
+  \Pr[\tilde{c}\in Im(\Share)]&=\Pr[\tilde{c}\in Im(\Share) | \Sim \text{ depends on } \pw]\cdot p\\
+  &+ \Pr[\tilde{c}\in Im(\Share)|\Sim \text{ does not depend on } \pw]\cdot (1-p)\\
+  &\leq p + 1/q^{mn-l}(1-p)\approx p.
+ \end{align*}
+\end{proof}

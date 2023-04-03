@@ -1,0 +1,38 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\section{A Concrete OT}
+
+In this section, we recall a concrete UC-secure oblivious transfer protocol due to Chou and Orlandi~\cite{LC:ChoOrl15}.
+While they consider the general case of $1$-out-of-$n$ transfer, we only consider $n = 2$.
+Say $m$ $1$-out-of-$2$ OTs are performed.
+The protocol requires the sender to compute $m +2$ exponentiations, and the receiver to compute $2m$ exponentiations, for a total of $3m + 2$ exponentiations.
+\sophia[inline]{The statement in the abstract of Chou and Orlandi~\cite{LC:ChoOrl15} is inconsistent}
+Figure~\ref{fig:concreteOT} shows a summary of the protocol.
+Note that this construction does require a random oracle.
+
+\begin{figure}
+  \centering
+   \begin{fboxenv}
+     \begin{tabular}{rrcl}
+     & Sender $\sender$ &   & Receiver $\receiver$ \\ \hline \\
+     & $a \getsr \Z_p$ & & \\
+     & $A = g^a$ & $\Rflow{A}$& \\
+     & $T = A^a$ & & \\
+     \multicolumn{1}{r}{\ldelim\{{7}{15mm}[$m$ times]} & let $M_0, M_1$ be the & & let $c \in \{0, 1\}$ be the \\
+     & current messages & & current choice bit \\
+     & & & $b \getsr \Z_p$ \\
+     & & $\Lflow{B}$ & $B = A^cg^b$ \\
+     &$\key_0 = H(A, B, B^a)$ & & $\key_{c} = H(A, B, A^b)$ \\
+     &$\key_1 = H(A, B, B^a/T)$ & & \\
+     &$e_0 \gets E_{k_0}(M_0)$ & & \\
+     &$e_1 \gets E_{k_1}(M_1)$ & & \\
+     && $\Rflow{e_0, e_1}{}$ & \\
+     && & $M_c = D_{k_R}(e_c)$ \\
+    \end{tabular}
+   \end{fboxenv}
+  \caption{A Concrete OT~\cite{LC:ChoOrl15} to be used in $\Prfe$}
+  \label{fig:concreteOT}
+\end{figure}
+
+\expl{Note that the last step only seems necessary when specific messages are considered. Can we cut out a message step by using the keys $\key_0$ and $\key_1$ as the garbled circuit labels directly?}

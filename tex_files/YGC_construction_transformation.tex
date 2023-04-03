@@ -1,0 +1,69 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\subsubsection{From Split Randomized Fuzzy Equality to \FAKE}
+\label{sec:ygcfaketransformation}
+
+The Randomized Fuzzy Equality (RFE) functionality $\Frfe^{P}$ assumes authenticated channels, which an $\FAKE$ protocol cannot do.
+In order to adapt RFE to our setting, we use the split functionality transformation defined by Barak~\etal~\cite{C:BCLPR05}.
+Barak~\etal provide a generic transformation from protocols which require authenticated channels to protocols which do not.
+In the ``transformed'' protocol, an adversary can engage in two separate instances of the protocol with the sender and receiver, and they will not realize that they are not talking to one another.
+However, it does guarantee that the adversary cannot do anything beyond this attack.
+In other words, it provides ``session authentication'', meaning that each party is guaranteed to carry out the entire protocol with the same partner, but not ``entity authentication'', meaning that the identity of the partner is not guaranteed.
+
+Barak~\etal achieve this transformation in three steps.
+First, the parties generate signing and verification keys, and send one another their verification keys.
+Next, the parties sign the list of all keys they have received (which, in a two-party protocol, consists of only one key), sign that list, and send both list and signature to all other parties.
+Finally, they verify all of the signatures they have received.
+After this process --- called ``link initialization'' --- has been completed, the parties use those public keys they have exchanged to authenticate subsequent communication. 
+
+We describe the Randomized Fuzzy Equality Split Functionality in Figure~\ref{fig:func-SRFE}.
+It is simplified from Figure 1 in Barak~\etal~\cite{C:BCLPR05} because we only need to consider two parties and static corruptions.
+
+\begin{figure}[tbp]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The functionality $\Fsrfe^{P}$ is parameterized by a security parameter~$\secparam$.
+      It interacts with an adversary~$\Sx$ and two parties $\firstparty$ and $\secondparty$ via the following queries:\\[-1.8em]
+      \begin{itemize}
+      \item \textbf{Initialization}
+        \begin{itemize}
+        \item
+        \textbf{Upon receiving a query $(\Init, \sid)$ from a party $\aparty \in \{\firstparty,\secondparty\}$}, 
+        send $(\Init, \sid, \aparty)$ to the adversary $\Sx$.
+        \item
+        \textbf{Upon receiving a query $(\Init, \sid, \aparty, H, \sid_H)$ from the adversary $\Sx$}:
+          \begin{itemize}
+          \item
+          Verify that $H \subseteq \{\firstparty, \secondparty\}$, that $\aparty \in H$, and that if a previous set $H'$ was recorded, either (1) $H \cap H'$ contains only corrupted parties and $\sid_H \neq \sid_{H'}$, or (2) $H = H'$ and $\sid_H = \sid_{H'}$.
+          \item
+          If verification fails, do nothing.
+          \item 
+          Otherwise, 
+          record the pair $(H, \sid_H)$ (if it was not already recorded), 
+          output $(\Init, \sid, \sid_H)$ to $\aparty$, and
+          locally initialize a new instance of the original RFE functionality $\Frfe$ denoted $H\Frfe^{P}$, letting the adversary play the role of $\{\firstparty, \secondparty\} - H$ in $H\Frfe^{P}$.
+          \end{itemize}
+        \end{itemize}
+      \item \textbf{RFE}
+        \begin{itemize}
+        \item
+        \textbf{Upon receiving a query from a party $\aparty \in \{\firstparty, \secondparty\}$,}
+        find the set $H$ such that $\aparty \in H$, and forward the query to $H\Frfe^{P}$.
+        Otherwise, ignore the query.
+        \item
+        \textbf{Upon receiving a query from the adversary $\Sx$ on behalf of $\aparty$ corresponding to set $H$,}
+        if $H\Frfe^{P}$ is initialized and $\aparty \not\in H$, then forward the query to $H\Frfe^{P}$.
+        Otherwise, ignore the query.
+        \end{itemize}
+      \end{itemize}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{Functionality $\Fsrfe^{P}$}
+  \label{fig:func-SRFE}
+\end{figure}
+
+It turns out that $\Fsrfe^{P}$ is enough to realize $\FFAKE^{P}$.
+In fact, the protocol $\Prfe$ with the split functionality transformation directly realizes $\FFAKE^{P}$.
+In \appref{sec:ygcfakeproof}, we prove that this is the case.

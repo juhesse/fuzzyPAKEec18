@@ -1,0 +1,104 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\subsubsection{A Randomized Fuzzy Equality Protocol}
+\label{sec:rfeprot}
+
+\begin{figure}[tb]
+  \centering
+  \scriptsize
+   \begin{fboxenv}
+     \begin{tabular}{lrcl}
+     & $\firstparty(\firstpw \in \{0,1\}^{\pwlen})$ &   & $\secondparty(\secondpw \in \{0,1\}^{\pwlen})$ \\ \hline \\
+    1 & $(\gfunc_{\firstindex}, \eninp_{\firstindex}, \deinp_{\firstindex}) \gets \gb(1^{\secparam}, \func)$ & & $(\gfunc_{\secondindex}, \eninp_{\secondindex}, \deinp_{\secondindex}) \gets \gb(1^{\secparam}, \func)$\\
+    & parse $\eninp_{\firstindex} = (\eninp_{\firstindex, \firstindex}, \eninp_{\firstindex, \secondindex})$ & & parse $\eninp_{\secondindex} = (\eninp_{\secondindex, \secondindex}, \eninp_{\secondindex, \firstindex})$ \\ \\
+    2 & & perform two OTs in parallel: & \\ \\
+    & (sender) & $\xrightarrow{\makebox[1cm]{$\eninp_{\firstindex, \secondindex}$}} \hspace{1cm} \xleftarrow{\makebox[1cm]{$\secondpw$}}$ & (receiver) \\ 
+    & & $\fbox{OT}$ & \\
+    & & $\hspace{2.2cm} \xrightarrow[{\makebox[1cm]{$\ginp_{\firstindex, \secondindex}=\en(\eninp_{\firstindex,\secondindex},\secondpw)$}}]{}$ &  \\ 
+    &&& \\
+    & (receiver) & $\xrightarrow{\makebox[1cm]{$\firstpw$}} \hspace{1cm} \xleftarrow{\makebox[1cm]{$\eninp_{\secondindex, \firstindex}$}}$ & (sender) \\ 
+    & & $\fbox{OT}$ & \\
+    & & $\xleftarrow[{\makebox[1cm]{$\ginp_{\secondindex, \firstindex}=\en(\eninp_{\secondindex,\firstindex},\firstpw)$}}]{} \hspace{2.2cm}$ &  \\ \\
+    %2 & $\ginp_{\secondindex,\firstindex} = \en(\eninp_{\secondindex,\firstindex}, \firstpw)$ &  $\LRsflow{}{\mbox{OT}}$ & $\ginp_{\firstindex,\secondindex} = \en(\eninp_{\firstindex,\secondindex}, \secondpw)$ \\
+    3 & $\ginp_{\firstindex,\firstindex} = \en(\eninp_{\firstindex,\firstindex}, \firstpw)$ & & $\ginp_{\secondindex,\secondindex} = \en(\eninp_{\secondindex,\secondindex}, \secondpw)$ \\
+    4 & &  $\LRsbflow{\ginp_{\firstindex,\firstindex}, \gfunc_\firstindex}{\ginp_{\secondindex,\secondindex}, \gfunc_{\secondindex}}$ & \\
+     & $\ginp_{\secondindex} = (\ginp_{\secondindex,\secondindex}, \ginp_{\secondindex,\firstindex})$ &  & $\ginp_{\firstindex} = (\ginp_{\firstindex,\firstindex}, \ginp_{\firstindex,\secondindex})$ \\
+    5 & $\goutp_{\secondindex} = \ev(\gfunc_{\secondindex}, \ginp_{\secondindex})$ & & $\goutp_{\firstindex} = \ev(\gfunc_{\firstindex}, \ginp_{\firstindex})$ \\
+    6 & $\key_{\firstindex, wrong} = \deinp_{\firstindex}[0]$ & & $\key_{\secondindex, wrong} = \deinp_{\secondindex}[0]$ \\
+    7 & $\key_{\firstindex, correct} = \deinp_{\firstindex}[1]$ & & $\key_{\secondindex, correct} = \deinp_{\secondindex}[1]$ \\
+    8 & $\firstkey = \key_{\firstindex, correct} \oplus \goutp_{\secondindex}$ & & $\secondkey = \key_{\secondindex, correct} \oplus 
+   \goutp_{\firstindex}$ \\
+    \end{tabular}
+   \end{fboxenv}
+  \caption{A Protocol $\Prfe$ Realizing $\Frfe^{P}$ using Yao's garbled circuits and an Ideal OT Functionality.
+  If at any point an expected message fails to arrive (or arrives malformed), the parties output a random key.
+  Subscripts are used to indicate who produced the object in question.
+  If a double subscript is present, the second subscript indicates whose data the object is meant for use with. 
+  For instance, a double subscript $0, 1$ denotes that the object was produced by party $\firstparty$ for use with $\secondparty$'s data; $\eninp_{\firstindex, \secondindex}$ is encoding information produced by $\firstparty$ to encode $\secondparty$'s \password.
+Note that we abuse notation by encoding inputs to a single circuit separately; the input to $\firstparty$'s circuit corresponding to $\firstpw$ is encoded by $\firstparty$ locally, and the input corresponding to $\secondpw$ is encoded via OT. 
+ For any projective garbling scheme, this is not a problem.}
+  \label{fig:YGCRFE}
+\end{figure}
+
+\expl{If we use Yao's garbled circuits in a black-box way, we need a random oracle query at the end instead of an XOR, because the other key isn't guaranteed to be indistinguishable from random to the adversary; it's just guaranteed to be hard to guess with non-negligible probability.}
+
+In Figure~\ref{fig:YGCRFE} we introduce a protocol $\Prfe$ that securely realizes $\Frfe^{P}$ using Yao's garbled circuits.
+Garbled circuits are secure against a malicious evaluator, but only a semi-honest garbler; however, we obtain security against malicious adversaries by having each party play each role once, as describe in Section~\ref{sec:YGCbackgroundOurs}.
+In more detail, both parties $\aparty \in \{\firstparty, \secondparty\}$ proceed as follows:
+
+\begin{enumerate}
+\item 
+$\aparty$ garbles the circuit $\func$ that takes in two \passwords $\firstpw$ and $\secondpw$, and returns `1' if $d(\firstpw, \secondpw) \leq \delta$ and `0' otherwise.
+Section~\ref{sec:efficientf} describes how $\func$ can be designed efficiently for Hamming distance. 
+Instead of using the output of $\func$ (`0' or `1'), we will use the garbled output, also referred to as an \emph{output label} in an output-projective garbling scheme.
+The possible output labels are two random strings --- one corresponding to a `1' output (we call this label $\key_{\aindex, correct} = \deinp_{\aindex}[1]$), and one corresponding to a `0' output (we call this label $\key_{\aindex, wrong} = \deinp_{\aindex}[0]$).
+\item
+$\aparty$ uses OT to retrieve the input labels from $\otherparty$'s garbling that correspond to $\aparty$'s \password.
+(Similarly, $\aparty$ uses OT to send $\otherparty$ the input labels from her own garbling that correspond to $\otherparty$'s \password.)
+\item 
+$\aparty$ sends $\otherparty$ her garbled circuit, together with the input labels from her garbling that correspond to her own \password.
+After this step, $\aparty$ should have $\otherparty$'s garbled circuit and a garbled input consisting of input labels corresponding to the bits of the two \passwords.
+\item 
+$\aparty$ evaluates $\otherparty$'s garbled circuit, and obtains an output label $\goutp_{\otherindex}$ (where $\goutp_{\otherindex} \in \{\key_{\otherindex, correct}, \key_{\otherindex, wrong}\}$) .
+\item 
+$\aparty$ outputs $\key_{\aindex} = \key_{\aindex, correct} \xor \goutp_{\otherindex}$.
+\end{enumerate}
+
+The natural question to ask is why $\Prfe$ only realizes $\Frfe^{P}$, and not a stronger functionality with less leakage.
+We argue this assuming (without loss of generality) that $\secondparty$ is corrupted.
+$\Prfe$ cannot realize a functionality that leaks less than the full \password $\firstpw$ to $\secondparty$ if $d(\firstpw, \secondpw) \leq \delta$;
+intuitively, this is because if $\secondparty$ knows a \password $\secondpw$ such that $d(\firstpw, \secondpw) \leq \delta$,
+$\secondparty$ can extract the actual \password $\firstpw$, as follows.
+% \julia[inline]{this is actually a bit misleading since we only care about what is leaked in \emph{one} execution of the protocol. recovering the whole \password here takes several protocol executions. what is important is that $\secondparty$ can extract an *arbitrary* bit, and this can only be simulated if \Sim knows the whole \password.}
+% \sophia[inline]{I make this argument as well in the next paragraph. However, I think that this (slightly misleading) argument is important for intuition... simulatability is the technical reason, but this is a real-world reason.}
+% \julia[inline]{Ok, I'm fine leaving it like it is.}
+If $\secondparty$ plays the role of OT receiver and garbled circuit evaluator honestly, 
+$\firstparty$ and $\secondparty$ will agree on $\key_{\firstindex, correct}$.
+$\secondparty$ can then mis-garble a circuit that returns $\key_{\secondindex, correct}$ if the first bit of $\firstpw$ is $0$, and $\key_{\secondindex, wrong}$ if the first bit of $\firstpw$ is $1$. 
+By testing whether the resulting keys $\firstkey$ and $\secondkey$ match (which $\secondparty$ can do in subsequent protocols where the key is used), $\secondparty$ will be able to determine the actual first bit of $\firstpw$.
+$\secondparty$ can then repeat this for the second bit, and so on, extracting the entire \password $\firstpw$.
+Of course, if $\secondparty$ does \emph{not} know a sufficiently close $\secondpw$, $\secondparty$ will not be able to perform these tests, because the keys will not match no matter what circuit $\secondparty$ garbles.
+
+More formally, if $\secondparty$ knows a \password $\secondpw$ such that $d(\firstpw, \secondpw) \leq \delta$ and carries out the mis-garbling attack described above, then in the real world, the keys produced by $\firstparty$ and $\secondparty$ either will or will not match based on some predicate $p$ of $\secondparty$'s choosing on the two \passwords $\firstpw$ and $\secondpw$.
+Therefore, in the ideal world, the keys should also match or not match based on $p(\firstpw, \secondpw)$; otherwise, the environment will be able to distinguish between the two worlds. 
+In order to make that happen, since the simulator does not know the predicate $p$ in question, the simulator must be able to recover the entire \password $\firstpw$ (given a sufficiently close $\secondpw$) through the $\TestPwd$ interface.
+
+\begin{theorem}
+\label{theorem:YGCRFE}
+If $(\gb, \en, \ev, \de)$ is %the (projective and output-projective) secure garbling scheme of Bal~\etal~\cite{CCS:BalMalRos16}, 
+a projective, output-projective and garbled-output random secure garbling scheme,
+then
+protocol $\Prfe$ with authenticated channels in the $\Fot$-hybrid model securely realizes $\Frfe^{P}$  with respect to static corruptions for any threshold $\delta$, 
+as long as the \password space and notion of distance are such that for any \password $\pw$, it is easy to compute another \password $\pw'$ such that $d(\pw, \pw') > \delta$.\iftoggle{full}{\footnote{This is used in the argument of indistinguishability of Games~\printgame{YGCRFEbuildF} and \printgame{YGCRFEkeyshonestclose} in Appendix~\ref{sec:rfeproof}.}}{}
+\end{theorem}
+\begin{proof}[Sketch]
+For every efficient adversary $\AdvA$, we describe a simulator $\SimYGCRFE$ such that no efficient environment can distinguish an execution with the real protocol $\Prfe$ and $\AdvA$ from an execution with the ideal functionality $\Frfe^{P}$ and $\SimYGCRFE$.
+$\SimYGCRFE$ is described in \iftoggle{full}{Figure~\ref{fig:SimulatorYGCRFE}}{the full version of this paper}.
+We prove indistinguishability in a series of hybrid steps.
+First, we introduce the ideal functionality as a dummy node.
+Next, we allow the functionality to choose the parties' keys, and we prove the indistinguishability of this step from the previous using the garbled output randomness property of our garbling scheme \iftoggle{full}{(Definition~\ref{def:garbledoutputrandomness}, Theorem~\ref{theorem:garbledoutputrandomness})}{}.
+Next, we simulate an honest party's interaction with another honest party without using their \password, and prove the indistinguishability of this step from the previous using the obliviousness property of our garbling scheme. %(Definition~\ref{def:obliviousness}).
+Finally, we simulate an honest party's interaction with a corrupted party without using the honest party's \password, and prove the indistinguishability of this step from the previous using the privacy property of our garbling scheme. %(Definition~\ref{def:privacy}).
+\end{proof}
+We give a more formal proof of Theorem~\ref{theorem:YGCRFE} in \appref{sec:rfeproof}.

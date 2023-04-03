@@ -1,0 +1,157 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\section{Proof that $\Fsrfe^{P}$ is Enough to Realize $\FFAKE^{P}$}
+\label{sec:ygcfakeproof}
+
+In Figure~\ref{fig:YGCFAKE}, we describe a protocol $\PfakeYGC$ which trivially realizes $\FFAKE^{P}$ in the $\Fsrfe^{P}$-hybrid model.
+\leo[inline]{Out of curiousity (and to help the reader), would be correct to say  ``$\Fsrfe^{P}$ is essentially the same as $\FFAKE^{P}$, and any protocol that realizes one also realizes the other?''}
+
+\julia[inline]{$\PfakeYGC$ has nothing to do with YGC, so the name is a bit misleading. If someone later references the theorem this might be confusing.}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+    	Upon receiving the input $(\sid, \apw)$, $\aparty \in \{\firstparty, \secondparty\}$ does the following:
+	\begin{itemize}
+	\item Sends $(\Init, \sid)$ to $\Fsrfe^{P}$;
+	\item Sends $(\NewSession, \sid, \apw)$ to $\Fsrfe^{P}$;
+	\item Waits for $\key$ from $\Fsrfe^{P}$, and 
+	\item Outputs $\key$.
+	\end{itemize}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{Protocol $\PfakeYGC$ realizing $\FFAKE^{P}$ in the $\Fsrfe^{P}$-hybrid model.}
+  \label{fig:YGCFAKE}
+\end{figure}
+
+\begin{theorem}
+Protocol $\PfakeYGC$ realizes $\FFAKE^{P}$ in the $\Fsrfe^{P}$-hybrid model.
+\end{theorem}
+
+\expl{Canetti~\etal~\cite{PKC:CDVW12} make a similar claim but only defend it in a ``full" version that is not available online.}
+
+\begin{proof}
+For every efficient adversary $\AdvA$, we describe a simulator $\SimYGCFAKE$ in Figure~\ref{fig:SimulatorYGCFAKE} such that no efficient environment can distinguish an execution with the real protocol $\PfakeYGC$ and $\AdvA$ from an execution with the ideal functionality $\FFAKE^{P}$ and $\SimYGCFAKE$.
+Since the environment does not get any information about the honest parties except their output, all the simulator needs to do is respond to queries to $\Fsrfe^{P}$.
+%$\SimYGCFAKE$ controls the ideal functionality $\Fsrfe^{P}$, so it can see all the adversarial inputs to that ideal functionality, but the adversary cannot see honest parties' inputs or outputs.
+Since the honest party does nothing except query the ideal functionality $\Fsrfe^{P}$, and its output gets replaced by values chosen by $\FFAKE^{P}$, there is nothing to simulate.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+    $\SimYGCFAKE$ responds to queries to $\Fsrfe^{P}$ as follows:
+	\begin{itemize}
+	\item Upon getting $(\Init, \sid)$ from $\AdvA$ on behalf of corrupt party $\otherparty \in \{\firstparty, \secondparty\}$, $\SimYGCFAKE$ 
+	does nothing.
+	%executes the code in Figure~\ref{fig:func-SRFE}.
+	\item Upon getting $(\Init, \sid, \aparty, H, \sid_{H})$ from $\AdvA$, $\SimYGCFAKE$ 
+	does nothing.
+	%executes the code in Figure~\ref{fig:func-SRFE}.
+	\item Upon getting $(\NewSession, \sid, \apw)$ from $\AdvA$ on behalf of honest party $\aparty \in \{\firstparty, \secondparty\}$, $\SimYGCFAKE$ does nothing.
+	\item Upon getting $(\NewSession, \sid, \otherpw')$ from $\AdvA$ on behalf of corrupt party $\otherparty \in \{\firstparty, \secondparty\}$, $\SimYGCFAKE$:
+	\begin{itemize}
+	%\item Executes the code in Figure~\ref{fig:func-SRFE};
+	\item Records $\otherpw'$;
+	\item Sends $(\TestPwd, \sid, \aparty, \otherpw')$ to $\FFAKE^{P}$;
+	\item If $d(\apw, \otherpw') \leq \delta$, $\SimYGCFAKE$ learns $\apw$.
+	\end{itemize}
+	\item Upon getting a $(\TestPwd, \sid, \aparty)$ query from $\AdvA$, 
+	$\SimYGCFAKE$ responds with the output of the $\TestPwd$ query above.
+	\item Upon getting a $(\NewKey, \sid, \aparty, \akey)$ query from $\AdvA$, 
+	if $\aparty$ is corrupt, $\SimYGCFAKE$ outputs $\akey$ to $\aparty$.
+	In any case, $\SimYGCFAKE$ forwards $(\NewKey, \sid, \aparty, \akey)$ to $\FFAKE^{P}$.
+	\end{itemize}
+	Additionally, $\SimYGCFAKE$ forwards all other instructions from \Env to \AdvA and reports all output of \AdvA towards \Env. Instructions of corrupting a player are only obeyed if they are received before the protocol started, i.e., before \Sim received any \NewKey query from $\FFAKE^{P}$.
+    \end{minipage}
+  \end{fboxenv}
+  \caption{Simulator $\SimYGCFAKE$ for $\PfakeYGC$.}
+  \label{fig:SimulatorYGCFAKE}
+\end{figure}
+
+All that remains to show is that the values produced by $\FFAKE^{P}$ and by $\Fsrfe^{P}$ are identically distributed.
+We describe the outputs of $\FFAKE^{P}$ and $\Fsrfe^{P}$ in Figure~\ref{fig:outputtables}.
+The table enumerates all possible cases in the functionalities. 
+Cases in $\Fsrfe^{P}$ are described in terms of the distances between \passwords: between the honest parties' \passwords if no man in the middle attack occurred, and between adversarial and honest \passwords if it did.
+(If the adversary engaged one party but not the other, only one of the distances is filled in.)
+Cases in $\FFAKE^{P}$ are described in terms of record markings (``fresh'', ``compromised'' or ``interrupted'').
+There is a one-to-one mapping between the cases in $\Fsrfe^{P}$ and $\FFAKE^{P}$ such that the outputs for the parties, whether they are honest or corrupt, are identically distributed.
+Those outputs are described in the last three columns of the table, as tuples of values the first of which is output to $\firstparty$, and the second of which is output to $\secondparty$.
+$a, b$ are adversarially chosen values (which may or may not be distinct).
+$r, s$ are independent, uniformly random values.
+
+%``(g, g)'' denotes the case where both parties are good; ``(g, b)'' denotes the case where $\Party_i$ is good and $\Party_j$ is bad; ``(b, g)'' denotes the reverse; and ``(b, b)'' denotes the case where both parties are bad.
+%Outputs within the table are written as tuples of random and adversarially chosen values, where the first value is output to $\Party_i$, and the second to $\Party_j$.
+%$a, b$ are adversarially chosen values (which may or may not be distinct).
+%$r, s$ are independent, uniformly random values.
+%``Close'' denotes the case where $d(\pw_i, \pw_j) \leq \delta$, and ``far'' denotes the case where $d(\pw_i, \pw_j) > \delta$.
+%The first two rows represent the case where the two parties are not split up by a man in the middle (so, only one indicator of closeness is necessary), and the last eight rows represent the cases where they are. 
+%``Close'' indicates that the the \passwords in the relevant session were sufficiently similar; ``far'' indicates that they were not.
+%In the case where the adversary split the two parties, $\bot$ indicates the adversary failed to engage in one of the two sessions.
+%``(Close, close)'' then denotes the case that the man in the middle guessed sufficiently close \passwords in both sessions, and so on.
+
+\begin{figure}
+\centering
+
+\scriptsize
+
+%\begin{tabular}{|c||c|c|c|c|}
+%\hline
+%$\Frfe^{P}$ & (g, g) & (g, b) & (b, g) & (b, b) \\ \hline \hline
+%close & r, r & a, b & a, b & a, b \\ \hline
+%far & r, s & r, b & a, s & a, b  \\ \hline
+%\end{tabular}
+
+%\begin{tabular}{|c||c|c|c|c|}
+%\hline
+%$\Fsrfe^{P} = \FFAKE^{P}$ & (g, g) & (g, b) & (b, g) & (b, b) \\ \hline \hline
+%close = (fresh, fresh) & r, r & a, b & a, b & a, b \\ \hline
+%far = (fresh, fresh) & r, s & r, b & a, s & a, b  \\ \hline
+%($\bot$, close) = (fresh, compromised) & r, b & r, b & a, b & a, b  \\ \hline
+%($\bot$, far) = (fresh, interrupted) & r, s & r, b & a, s & a, b  \\ \hline
+%(close, close) = (compromised, compromised) & a, b & a, b & a, b & a, b  \\ \hline
+%(close, far) = (compromised, interrupted) & a, s & a, b & a, s & a, b  \\ \hline
+%(close, $\bot$) = (compromised, fresh) & a, s & a, b & a, s & a, b \\ \hline
+%(far, close) = (interrupted, compromised) & r, b & r, b & a, b & a, b  \\ \hline
+%(far, far) = (interrupted, interrupted) & r, s & r, b & a, s & a, b  \\ \hline
+%(far, $\bot$) = (interrupted, fresh) & r, s & r, b & a, s & a, b  \\ \hline
+%\end{tabular}
+
+\begin{tabular}{|C{2cm}|C{2cm}|C{2cm}||C{1.5cm}|C{1.5cm}||C{1cm}|C{1cm}|C{1cm}|}
+\hline
+\multicolumn{3}{|c||}{$\Fsrfe^{P}$} & \multicolumn{2}{c||}{$\FFAKE^{P}$} & \multicolumn{3}{C{3cm}|}{outputs in both $\Fsrfe^{P}$ and $\FFAKE^{P}$} \\ \hline
+distance between $\firstparty$'s \password and $\secondparty$'s \password $d(\firstpw, \secondpw)$, if MITM didn't happen & distance between $\firstparty$'s \password and the adversary's $d(\firstpw, \secondpw')$, if MITM happened & distance between $\secondparty$'s \password and the adversary's $d(\firstpw', \secondpw)$, if MITM happened & $\firstparty$'s record & $\secondparty$'s record & $\firstparty$ and $\secondparty$ honest & $\firstparty$ honest, $\secondparty$ corrupt & $\firstparty$ and $\secondparty$ corrupt \\ \hline \hline
+close ($\leq \delta$) & & & fresh & fresh & r, r & a, b & a, b \\ \hline
+far ($> \delta$) & & & fresh & fresh & r, s & r, b & a, b \\ \hline \hline
+& close ($\leq \delta$) & close ($\leq \delta$) & compromised & compromised & a, b & a, b & a, b  \\ \hline
+& close ($\leq \delta$) & far ($> \delta$) & compromised & interrupted & a, s & a, b & a, b  \\ \hline
+& close ($\leq \delta$) & & compromised & fresh & a, s & a, b & a, b \\ \hline
+& far ($> \delta$) & close ($\leq \delta$) & interrupted & compromised & r, b & r, b & a, b  \\ \hline
+& far ($> \delta$) & far ($> \delta$) & interrupted & interrupted & r, s & r, b & a, b  \\ \hline
+& far ($> \delta$) & & interrupted & fresh & r, s & r, b & a, b  \\ \hline
+& & close ($\leq \delta$) & fresh & compromised & r, b & r, b & a, b  \\ \hline
+& & far ($> \delta$) & fresh & interrupted & r, s & r, b & a, b  \\ \hline
+\end{tabular}
+
+\caption{Output tables for %$\Frfe^{P}$ and 
+$\FFAKE^{P}$ and $\Fsrfe^{P}$. $r, s$ represent random outputs, while $a, b$ represent adversarially chosen outputs.}
+\label{fig:outputtables}
+\end{figure}
+
+\end{proof}
+
+The transformation of Barak~\etal proceeds in two steps.
+First, links are initialized:
+\begin{enumerate}
+\item
+Each party generates a signing and verification key pair, and sends the verification key to its partner. 
+\item 
+Each party then signs the key it receives and sends the signature back.
+\item
+Each party verifies the signature it receives on its own verification key using the verification key it received; if the signature does not verify, it aborts.
+\end{enumerate}
+Second, the parties run the protocol exactly as they would over authenticated channels, signing each message with their signing key, and verifying each signature they receive.
+
+Applying this transformation adds (1) two rounds of communication, and (2) a hash operation and a signature operation for each message, assuming the hash-and-sign paradigm is used.

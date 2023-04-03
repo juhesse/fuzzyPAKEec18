@@ -1,0 +1,180 @@
+% !TEX spellcheck = en_US
+
+%
+% Paper latex template
+%
+%
+% Parameters
+%
+
+\RequirePackage{etoolbox}
+\newtoggle{full}          % false = conference version; true = full version
+\newtoggle{showoverflow}  % true  = show overflows
+\newtoggle{allowtodo}     % false = remove todo command
+\newtoggle{allowexpl}     % false = remove explanations
+\newtoggle{anonymous}     % true  = anonymous
+\newtoggle{submission}    % true  = submission (force llncs style for crypto)
+\newtoggle{llncs}
+
+\providetoggle{forcefull} % true = force full version from outside (see paper-full.tex)
+\providetoggle{forceconf} % true = force conf version from outside (see paper-conf.tex)
+\iftoggle{forcefull}{\toggletrue{full}}{\iftoggle{forceconf}{\togglefalse{full}}{
+    \toggletrue{full}     % default value for full
+  }}
+ 
+\toggletrue{full}
+%\toggletrue{showoverflow} % default value for showoverflow
+\togglefalse{allowtodo}    % default value for allowtodo
+\togglefalse{allowexpl}    % default value for allowexpl
+\togglefalse{anonymous}    % default value for anonymous
+
+%\togglefalse{allowtodo}
+%\togglefalse{allowexpl}
+
+\ifboolexpr{togl{full} and (not togl{submission})}{
+  \togglefalse{llncs}
+}{
+  \toggletrue{llncs}
+}
+
+%
+% Document class
+%
+\iftoggle{llncs}{
+  \documentclass[envcountsame,runningheads]{llncs}
+}{
+  \documentclass[11pt,envcountsame,runningheads]{llncs+}
+  \ifboolexpr{not (togl{allowtodo})}{
+   %\usepackage[a4paper, hmargin=2cm, vmargin=2cm, marginparwidth=1.8cm]{geometry}
+   \usepackage[a4paper]{geometry}
+  }{
+    %\usepackage[a4paper, left=0.8cm, right=3.2cm, vmargin=2cm, marginparwidth=2.8cm]{geometry}
+    \usepackage[a4paper]{geometry}
+  }
+}
+\pagestyle{plain}
+\makeatletter
+%\def\tableofcontents{\def\authcount##1{\setcounter{auco}{##1}\setcounter{@auth}{1}}\@starttoc{toc}}
+\makeatother
+
+%
+% Custom header
+%
+
+\input{tex_files/ZZ_header}
+
+%
+% Title and other informations
+%
+
+\begin{document}
+
+\title{Fuzzy Password-Authenticated Key Exchange}
+\titlerunning{Fuzzy Password-Authenticated Key Exchange}
+
+\iftoggle{anonymous}{
+  \author{}
+  \institute{}
+  \date{\today}
+}{
+  \author{Pierre-Alain Dupont \inst{1,2,3} \and Julia Hesse \inst{4,6} \and David Pointcheval \inst{2,3} \and Leonid Reyzin \inst{5} \and Sophia Yakoubov \inst{5}}
+  \institute{DGA \and DIENS, \'{E}cole Normale Sup\'{e}rieure, CNRS, PSL University, Paris, France
+  \and INRIA \and Technische Universität Darmstadt \and Boston University \and Work done while at \'{E}cole Normale Sup\'{e}rieure}
+  \date{\today}
+}
+
+\maketitle
+
+\begin{abstract}
+\input{tex_files/00_Abstract}
+\end{abstract}
+\textbf{Keywords:} Authenticated Key Exchange, PAKE, Hamming Distance, Error Correcting Codes, Yao's Garbled Circuits
+
+
+%\newpage
+%\vfill
+\setcounter{tocdepth}{3}
+%\addcontentsline{toc}{part}{}
+%Breaks hyperref pdf references
+% \tableofcontents
+\newpage
+
+\section{Introduction}
+\label{sec:intro}
+\input{tex_files/01_Intro}
+
+\section{Security Model}
+\label{sec:model}
+\input{tex_files/03_Model}
+
+\section{General Construction Using Garbled Circuits}
+\label{sec:ygcfake}
+\input{tex_files/04_FPAKE_YGC}
+
+\section{Specialized Construction For Hamming Distance}
+\label{sec:rssfake}
+\input{tex_files/05_FPAKE_RSS}
+
+\section{Comparison of \FAKE Protocols}
+\input{tex_files/06_FPAKE_Comp}
+
+% \section{Conclusion and Open Problems}
+% \label{sec:conclusion}
+% \input{tex_files/07_Conclusion}
+
+\iftoggle{anonymous}{}{
+}{
+\section*{Acknowledgments}
+We thank Ran Canetti for guidance on the details of UC key agreement definitions, and Adam Smith for discussions on coding and information reconciliation.
+
+This work was supported in part by the European Research Council under the European Community's Seventh Framework Programme (FP7/2007-2013 Grant Agreement no. 339563 -- CryptoCloud). Leonid Reyzin gratefully acknowledges the hospitality of \'{E}cole Normale Sup\'{e}rieure, where some of this work was performed.
+He was supported, in part, by US NSF grants 1012910, 1012798, and 1422965.
+}
+
+\iftoggle{full}{
+  \bibliographystyle{alpha}
+}{
+  \bibliographystyle{splncs03}
+}
+
+\begin{small}
+\bibliography{cryptobib/abbrev3,cryptobib/crypto,bib/add,bib/sophia,bib/leo}
+\end{small}
+
+\iftoggle{full}{
+%\newpage
+%\chapter*{Supplementary Material}
+\appendix
+
+\section{Ideal UC Functionalities}
+\label{appendix:setup}
+\input{tex_files/A1_Functionalities}
+
+%\section{Yao's Garbled Circuits Background}
+%\label{sec:YGC}
+%\input{tex_files/YGC_background}
+%\input{tex_files/YGC_definitions}
+
+\input{tex_files/YGC_newdefinitions}
+
+\input{tex_files/YGC_construction_randomizedfuzzyequalityprotocol_proof}
+
+\input{tex_files/YGC_construction_transformation_proof}
+
+\input{tex_files/YGC_construction_OT}
+
+\section{Proof of Theorem~\ref{theorem:lipake}}
+\label{app:lipake}
+\input{tex_files/A2_liPAKE_proof}
+
+\section{Proof of Theorem~\ref{theorem:fake2}}
+\label{sec:proofFake2}
+% \input{tex_files/A4_fPAKE_RSS_proof}
+\input{tex_files/A4_fPAKE_RSS_proof_wo_sep}
+
+\section{A Natural (But Failed) Approach to \FAKE}
+\label{sec:sketch}
+\input{tex_files/A3_NaturalComposition}
+}
+
+\end{document}

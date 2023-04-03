@@ -1,0 +1,295 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\section{Garbled Output Randomness: A New Yao's Garbled Circuit Definition}
+\label{sec:garbledoutputrandomness}
+
+We refer to Yakoubov~\cite{YGCintro} for a gentle introduction to Yao's Garbled Circuits.
+Note that the authenticity property implies that, in an output-projective garbling scheme, if the output is a single bit, the second output label and the second token of $\deinp$ are hard for the evaluator to guess (no probabilistic polynomial-time adversary can guess it with non-negligible probability). 
+However, for our $\FAKE$ construction (Section~\ref{sec:ygcfake}), we require a stronger property: not only should the second output label be hard to guess, but it should be \emph{indistinguishable from random}. 
+We call this \emph{garbled-output randomness}.
+
+\begin{figure}
+\centering
+\begin{fboxenv}
+\begin{tabular}{rcl}
+Challenger & & Adversary $\adversary$ \\
+\hline
+& & \\
+& $\Lflow{\func, \inp}{}$ & \\
+\xspace\xspace\xspace $(\gfunc, \eninp, \deinp) \gets \gb(1^{\secparam}, \func)$ & & \\
+\xspace\xspace\xspace $\ginp \gets \en(\eninp, \inp)$ & & \\
+$b \getsr \{0,1\}$ & & \\
+If $b = 0$: & & \\
+\xspace\xspace\xspace $\random = \goutp_{1-\outp}$ & & \\
+If $b = 1$: & & \\
+\xspace\xspace\xspace $\random$ is chosen at random & & \\
+\xspace\xspace\xspace (or simulated) & & \\
+& $\Rflow{\gfunc, \ginp, \random}{}$ & \\
+& $\Lflow{b'}{}$ & \\
+& $\adversary$ wins (i.e. the game returns $1$) if $b' = b$  & \\
+\end{tabular}
+\end{fboxenv}
+\caption{The $\garbledoutputrandomnessgame{\secparam}{\adversary}{\gbscheme}$ Game, where $\outp = \func(\inp) \in \{0,1\}$, $\goutp_{\outp}$ is the corresponding garbled output (or output label), and $\goutp_{1-\outp}$ is the other output label.}
+\label{fig:garbledoutputrandomnessgame}
+\end{figure}
+
+Define the adversary $\adversary$'s advantage in the the garbled-output randomness game (Figure~\ref{fig:garbledoutputrandomnessgame}) as 
+\[\garbledoutputrandomnessadv{\secparam}{\adversary}{\gbscheme} = \Big|\Pr[\garbledoutputrandomnessgame{\secparam}{\adversary}{\gbscheme} = 1] - \frac{1}{2}\Big|.\]
+
+\begin{definition}
+\label{def:garbledoutputrandomness}
+
+An output-projective binary output garbling scheme $\gbscheme = (\gb, \en, \ev, \de)$ is \emph{garbled-output random} if 
+for all sufficiently large security parameters $\secparam$, 
+for any polynomial time adversary $\adversary$, 
+\[\garbledoutputrandomnessadv{\secparam}{\adversary}{\gbscheme} = \negl.\]
+\end{definition}
+
+In order to achieve this, we modify the scheme of Bal~\etal~\cite{CCS:BalMalRos16} to put the output wire label through the hash function $\kdf$ one more time; the two labels will thus be $\goutp_0 = \kdf(\mathsf{finaloutput}, \wirelabel_{output}^0)$ and $\goutp_1 = \kdf(\mathsf{finaloutput}, \wirelabel_{output}^0 \oplus \distance)$, where $\wirelabel_{output}^0$ and $\wirelabel_{output}^0 \oplus \distance$ were the labels in the scheme of Bal~\etal
+
+\begin{theorem}
+\label{theorem:garbledoutputrandomness}
+This modified scheme is garbled-output random (Definition~\ref{def:garbledoutputrandomness}) when the key derivation function $\kdf$ is mixed-modulus circular correlation robust (Definition 1 of Bal~\etal~\cite{CCS:BalMalRos16}).
+\end{theorem}
+
+\begin{proof}[Proof Sketch]
+%Informally, our modification guarantees that $\goutp_{1-b}$ looks random even given $\goutp_{b}$ (when $\goutp_{b}$ is the true output), because if there existed a distinguisher that could tell $\goutp_{1-b}$ from random, it could be used to break the assumption that $\kdf$ is mixed-modulus circular correlation robust.
+
+Definition~\ref{def:garbledoutputrandomness} requires the indistinguishability of (real garbled circuit and inputs, real second output label) and (real garbled circuit and inputs, random second output label); in shorthand, we want to show that $(real, real) \sim (real, random)$, where $\sim$ denotes computational indistinguishability.
+
+We use the setting (simulated garbled circuit and inputs, random second output label) --- $(simulated, random)$ for short --- as a hybrid step.
+We show that $(real, real) \sim (simulated, random)$.
+We do this by having the adversary $\AdvA$ (modeled after the one in Choi~\etal~\cite{TCC:CKKZ12}) compute %$\kdf(\mathsf{finaloutput}, \wirelabel_{output}^b)$ and 
+the second output label $\oracle(\mathsf{finaloutput}, 2, 2, \allowbreak \wirelabel_{output}^b, 1, 0)$ (using the mixed-modulus circular correlation robustness oracle) and send it to the obliviousness adversary $\AdvB$ along with the garbled circuit and garbled inputs. 
+If the oracle is random, $\AdvB$ will see $(simulated, random)$.
+Otherwise, $\AdvB$ will see $(real, real)$.
+If $\AdvB$ can distinguish between those two, then $\AdvA$ can use that to break mixed-modulus circular correlation robustness.
+Hence, $(real, real) \sim (simulated, random)$.
+
+Because the garbling scheme is oblivious, we know that $(simulated, random) \sim (real, random)$, since we can always add a random value to the adversary's view in the obliviousness game.
+
+Now that we have $(real, real) \sim (simulated, random)$ and $(simulated, \allowbreak random) \allowbreak \sim (real, random)$, we can conclude that $(real, real) \sim (real, random)$.
+ 
+\end{proof}
+
+%\subsubsection{Strong Garbled Output Randomness: More New Definitions}
+%
+%Our {\FAKE} protocol requires an even stronger definition.
+%Specifically, our simulator in Section~\ref{sec:rfeprot} needs to know the garbled input \emph{before it knows the input itself!}
+%In order to accommodate this, we define \emph{strong garbled output randomness}, which requires the challenger to provide a garbled input before knowing what that input represents.
+%
+%We define additional algorithms that separately produce a garbled input without knowing the actual input, and then produce a garbled circuit once the actual input is provided.
+%
+%\begin{enumerate}
+%\item $\gbinp(1^{\secparam}, \func) \to (\ginp)$\\
+%The input garbling algorithm $\gbinp$ 
+%takes in the security parameter and a circuit $\func$, 
+%and returns a
+%garbled input $\ginp$ (without knowing the input $\inp$ it corresponds to).
+%\item $\gbcirc(1^{\secparam}, \func, \ginp, \inp) \to (\gfunc, \eninp, \deinp)$\\
+%The circuit garbling algorithm $\gbcirc$ 
+%takes in the security parameter, a circuit $\func$,
+%the garbled input $\ginp$ and the corresponding input $\inp$,
+%and returns a 
+%garbled circuit $\gfunc$, encoding information $\eninp$ (that in a projective scheme includes $\ginp$), and decoding information $\deinp$.
+%\end{enumerate}
+%
+%\paragraph{Input Independence}
+%
+%\begin{figure}
+%\centering
+%\begin{fboxenv}
+%\begin{tabular}{rcl}
+%Challenger & & Adversary $\adversary$ \\
+%\hline
+%& & \\
+%& $\Lflow{\func, \inp}{}$ & \\
+%$b \getsr \{0,1\}$ & & \\
+%If $b = 0$: & & \\
+%\xspace\xspace\xspace $(\gfunc, \eninp, \deinp) \gets \gb(1^{\secparam}, \func)$ & & \\
+%If $b = 1$: & & \\
+%\xspace\xspace\xspace $\ginp \gets \gbinp(1^{\secparam}, \func)$ & & \\
+%\xspace\xspace\xspace $(\gfunc, \eninp, \deinp) \gets \gbcirc(1^{\secparam}, \func, \ginp, \inp)$  & & \\
+%& $\Rflow{\gfunc, \eninp, \deinp}{}$ & \\
+%& $\Lflow{b'}{}$ & \\
+%& $\adversary$ wins (i.e. the game returns $1$) if $b' = b$  & \\
+%\end{tabular}
+%\end{fboxenv}
+%\caption{The $\inputindependencegame{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc}$ Game}
+%\label{fig:inputindependence}
+%\end{figure}
+%
+%Consider the input independence game game $\inputindependencegame{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc}$ described in Figure~\ref{fig:inputindependence}, 
+%which is parametrized by 
+%a security parameter $\secparam$, 
+%a garbling scheme $\gbscheme$, 
+%an adversary $\adversary$, 
+%an input garbling algorithm $\gbinp$, and 
+%a circuit garbling algorithm $\gbcirc$.
+%$\inputindependencegame{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc}  = 1$ if the adversary wins (that is, $b = b'$), and $\inputindependencegame{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc}  = 0$ otherwise.
+%
+%Define the adversary $\adversary$'s advantage in the input independence game (Figure~\ref{fig:inputindependence}) as 
+%\[\inputindependenceadv{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc} = \Big|\Pr[\stronggarbledoutputrandomnessgame{\secparam}{\adversary}{\gbscheme} = 1] - \frac{1}{2}\Big|.\]
+%
+%\begin{definition}
+%\label{def:inputindependence}
+%Informally, a scheme is input independent if the garbling algorithm $\gb$ can be replaced with efficient algorithms $\gbinp$ and $\gbcirc$.
+%
+%More formally, 
+%a garbling scheme $\gbscheme = (\gb, \en, \ev, \de)$ is \emph{input independent} 
+%if there exist probabilistic polynomial-time algorithms $\gbinp$ and $\gbcirc$ such that
+%for all sufficiently large security parameters $\secparam$, 
+%for any polynomial time adversary $\adversary$, 
+%\[\inputindependenceadv{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc} = \negl.\]
+%\end{definition}
+%
+%\begin{theorem}
+%\label{theorem:inputindependence}
+%The scheme of Bal~\etal~\cite{CCS:BalMalRos16} is input independent (Definition~\ref{def:inputindependence}).
+%\end{theorem}
+%
+%\begin{proof}
+%In the scheme of Bal~\etal, $\gbinp$ and $\gbcirc$ can be implemented as follows:
+%
+%\begin{enumerate}
+%\item $\gbinp(1^{\secparam}, \func):$\\
+%Let $\ginp$ be empty.
+%For the $i$th input wire of $\func$ having modulus $\modulus$:
+%\begin{itemize}
+%\item choose $\wirelabel_i \getsr \{0, \dots, \modulus-1\}^{\secparam}$, and 
+%\item add $\wirelabel_i$ to $\ginp$.
+%\end{itemize}
+%Return $\ginp$.
+%
+%\item $\gbcirc(1^{\secparam}, \func, \ginp, \inp):$\\
+%For every modulus $\modulus$ present in the circuit, choose a distance $\distance_{\modulus} \getsr \{0, \dots, \modulus-1\}^{\secparam}$.
+%For the $i$th input wire of $\func$ having modulus $\modulus$:
+%\begin{itemize}
+%\item Let $\wirelabel_i$ be the garbled input in $\ginp$ corresponding to that wire, and $\inp_i$ be the corresponding input.
+%\item Set $\wirelabel_i^0 = \wirelabel_i \ominus_{\modulus} \inp_i \distance_{\modulus}$.
+%\end{itemize}
+%Execute the rest of the $\gb$ procedure as before.
+%\end{enumerate}
+%
+%$\gfunc, \eninp$ and $\deinp$ produced by the $\gbinp$ and $\gbcirc$ algorithms above are identically distributed to those produced by $\gb$ in the original scheme of Bal~\etal, \emph{if $\inp$ is chosen independently of $\ginp$}, as it is in Figure~\ref{fig:inputindependence}.
+%Notice that each wire label $\wirelabel_i^0$ is still uniformly distributed; choosing $\wirelabel_i^0$ at random directly is equivalent to choosing $\wirelabel_i$ and $\distance_{\modulus}$ at random and setting $\wirelabel_i^0 = \wirelabel_i \ominus_{\modulus} \inp_i \distance_{\modulus}$ for any $\inp_i$.
+%The rest of the equivalence follows.
+%\end{proof}
+%
+%\expl{However, if I can choose $\inp$ adaptively, I can skew the distribution; I can make sure, for instance, that the first bit of the label matches the input bit with high probability.}
+%
+%\paragraph{Strong Obliviousness}
+%
+%\begin{figure}
+%\centering
+%\begin{fboxenv}
+%\begin{tabular}{rcl}
+%Challenger & & Adversary $\adversary$ \\
+%\hline
+%& & \\
+%& $\Lflow{\func}{}$ & \\
+%$\ginp \gets \gbinp(1^{\secparam}, \func)$ & $\Rflow{\ginp}$ & \\
+%& $\Lflow{\inp}$ & \\
+%$b \getsr \{0,1\}$ & & \\
+%If $b = 0$: & & \\
+%\xspace\xspace\xspace $(\gfunc, \eninp, \deinp) \gets \gbcirc(1^{\secparam}, \func, \ginp, \inp)$  & & \\
+%If $b = 1$: & & \\
+%\xspace\xspace\xspace $\gfunc \gets \simulator(1^{\secparam}, \func, \ginp)$ & & \\
+%& $\Rflow{\gfunc}{}$ & \\
+%& $\Lflow{b'}{}$ & \\
+%& $\adversary$ wins (i.e. the game returns $1$) if $b' = b$  & \\
+%\end{tabular}
+%\end{fboxenv}
+%\caption{The $\strongobliviousnessgame{\secparam}{\adversary}{\gbscheme}{\simulator}{\gbinp}{\gbcirc}$ Game}
+%\label{fig:strongobliviousnessgame}
+%\end{figure}
+%
+%Consider the strong obliviousness game $\strongobliviousnessgame{\secparam}{\adversary}{\gbscheme}{\simulator}{\gbinp}{\gbcirc}$ described in Figure~\ref{fig:strongobliviousnessgame}, 
+%which is parametrized by 
+%a security parameter $\secparam$, 
+%a garbling scheme $\gbscheme$, 
+%an adversary $\adversary$, 
+%a simulator $\simulator$,
+%an input garbling algorithm $\gbinp$, and 
+%a circuit garbling algorithm $\gbcirc$.
+%$\strongobliviousnessgame{\secparam}{\adversary}{\gbscheme}{\simulator}{\gbinp}{\gbcirc}  = 1$ if the adversary wins (that is, $b = b'$), and $\strongobliviousnessgame{\secparam}{\adversary}{\gbscheme}{\simulator}{\gbinp}{\gbcirc}  = 0$ otherwise.
+%
+%Define the adversary $\adversary$'s advantage in the strong obliviousness game (Figure~\ref{fig:strongobliviousnessgame}) as 
+%\[\strongobliviousnessadv{\secparam}{\adversary}{\gbscheme}{\simulator}{\gbinp}{\gbcirc} = \Big|\Pr[\strongobliviousnessgame{\secparam}{\adversary}{\gbscheme}{\simulator}{\gbinp}{\gbcirc} = 1] - \frac{1}{2}\Big|.\]
+%
+%\begin{definition}
+%\label{def:strongobliviousness}
+%
+%An input independent garbling scheme $\gbscheme = (\gb, \en, \ev, \de)$ is \emph{strongly oblivious} 
+%if there exist probabilistic polynomial-time algorithms $\gbinp$ and $\gbcirc$ such that
+%for all sufficiently large security parameters $\secparam$, 
+%for any polynomial time adversary $\adversary$, 
+%\[\strongobliviousnessadv{\secparam}{\adversary}{\gbscheme}{\simulator}{\gbinp}{\gbcirc} = \negl.\]
+%\end{definition}
+%
+%\begin{theorem}
+%\label{theorem:strongobliviousness}
+%The scheme of Bal~\etal~\cite{CCS:BalMalRos16} is strongly oblivious (Definition~\ref{def:strongobliviousness}) when the key derivation function $\kdf$ is mixed-modulus circular correlation robust (Definition 1 of Bal~\etal).
+%\end{theorem}
+%
+%The proof of Theorem~\ref{theorem:strongobliviousness} is almost unchanged from the proof by Choi~\etal~\cite{TCC:CKKZ12}.
+%The one exception is that the simulator skips part of step 1 (randomly choosing labels for active input wires), since that was accomplished by $\gbinp$.
+%
+%\paragraph{Strong Garbled Output Randomness}
+%
+%\begin{figure}
+%\centering
+%\begin{fboxenv}
+%\begin{tabular}{rcl}
+%Challenger & & Adversary $\adversary$ \\
+%\hline
+%& & \\
+%& $\Lflow{\func}{}$ & \\
+%$\ginp \gets \gbinp(1^{\secparam}, \func)$ & $\Rflow{\ginp}$ & \\
+%& $\Lflow{\inp}$ & \\
+%$(\gfunc, \eninp, \deinp) \gets \gbcirc(1^{\secparam}, \func, \ginp, \inp)$  & & \\
+%$b \getsr \{0,1\}$ & & \\
+%If $b = 0$: & & \\
+%$\random = \goutp_{1-\outp}$ & & \\
+%If $b = 1$: & & \\
+%$\random$ is chosen at random & & \\
+%(or simulated) & & \\
+%& $\Rflow{\gfunc, \random}{}$ & \\
+%& $\Lflow{b'}{}$ & \\
+%& $\adversary$ wins (i.e. the game returns $1$) if $b' = b$  & \\
+%\end{tabular}
+%\end{fboxenv}
+%\caption{The $\stronggarbledoutputrandomnessgame{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc}$ Game, where $\outp = \func(\inp) \in \{0,1\}$, $\goutp_{\outp}$ is the corresponding garbled output (or output label), and $\goutp_{1-\outp}$ is the other output label.}
+%\label{fig:stronggarbledoutputrandomnessgame}
+%\end{figure}
+%
+%Consider the strong garbled-output randomness game $\stronggarbledoutputrandomnessadv{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc}$ described in Figure~\ref{fig:stronggarbledoutputrandomnessgame}, 
+%which is parametrized by 
+%a security parameter $\secparam$, 
+%a garbling scheme $\gbscheme$, 
+%an adversary $\adversary$, 
+%an input garbling algorithm $\gbinp$, and 
+%a circuit garbling algorithm $\gbcirc$.
+%$\stronggarbledoutputrandomnessadv{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc}  = 1$ if the adversary wins (that is, $b = b'$), and $\stronggarbledoutputrandomnessadv{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc}  = 0$ otherwise.
+%
+%Define the adversary $\adversary$'s advantage in the strong garbled-output randomness game (Figure~\ref{fig:stronggarbledoutputrandomnessgame}) as 
+%\[\stronggarbledoutputrandomnessadv{\secparam}{\adversary}{\gbscheme}{\gbinp}{\gbcirc} = \Big|\Pr[\stronggarbledoutputrandomnessgame{\secparam}{\adversary}{\gbscheme} = 1] - \frac{1}{2}\Big|.\]
+%
+%\begin{definition}
+%\label{def:stronggarbledoutputrandomness}
+%
+%An input independent output-projective binary output garbling scheme $\gbscheme = (\gb, \en, \ev, \de)$ is \emph{strongly garbled-output random} if 
+%for all sufficiently large security parameters $\secparam$, 
+%for any polynomial time adversary $\adversary$, 
+%\[\stronggarbledoutputrandomnessadv{\secparam}{\adversary}{\gbscheme} = \negl.\]
+%\end{definition}
+%
+%\begin{theorem}
+%\label{theorem:stronggarbledoutputrandomness}
+%The scheme above is strongly garbled-output random (Definition~\ref{def:stronggarbledoutputrandomness}) when the key derivation function $\kdf$ is mixed-modulus circular correlation robust (Definition 1 of Bal~\etal~\cite{CCS:BalMalRos16}).
+%\end{theorem}
+%
+%\begin{proof}
+%The proof of Theorem~\ref{theorem:stronggarbledoutputrandomness} is the same as the proof of Theorem~\ref{theorem:garbledoutputrandomness}, but it uses the the strong obliviousness property in its argument instead of the obliviousness property. 
+%\end{proof}

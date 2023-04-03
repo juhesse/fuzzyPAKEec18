@@ -1,0 +1,401 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\section{Proof of Theorem~\ref{theorem:YGCRFE}}
+\label{sec:rfeproof}
+We proceed in a series of games, where no probabilistic polynomial-time environment can distinguish the view of the adversary $\AdvA$ in each game from that in the previous game.
+We start with the real execution of the protocol and end with the ideal execution. 
+Figure~\ref{fig:YGCRFEproofsummary} summarizes the changes made in each game.
+
+\newcommand{\gamereal}[1]{{\color{red}#1}}
+\newcommand{\gameintermediate}[1]{{\color{orange}#1}}
+\newcommand{\gameideal}[1]{{\color{blue}#1}}
+
+\begin{figure}
+\centering
+\begin{tabular}{|C{.5cm}|c|C{2.5cm}|C{2.5cm}|C{2.5cm}|C{2.5cm}|C{2.5cm}|}
+\hline
+& \multirow{2}{*}{Game} & \multicolumn{3}{c|}{Functionality $\Func$} & \multirow{2}{*}{$\SimYGCRFE$} & \multirow{2}{*}{Property Used}\\ \hhline{~~---~~}
+& & \NewSession & \TestPwd & \NewKey & &  \\ \hline
+& Game~\printgame{YGCRFEreal} & \gamereal{N/A} & \gamereal{N/A} & \gamereal{N/A} & \gamereal{N/A} & \\ \hhline{~------}
+& Game~\printgame{YGCRFElayout} & \gamereal{forwards inputs to $\SimYGCRFE$} & & \gamereal{forwards outputs to dummy parties} & \gamereal{runs protocol for honest parties} & \\ \hhline{~------}
+& Game~\printgame{YGCRFEbuildF} & \gameintermediate{records inputs} & & & \gameintermediate{creates $\NewKey$ queries from party outputs} & \\ \hline \hline
+\multirow{5}{*}{\rotatebox{90}{\centering both parties honest}} & Game~\printgame{YGCRFEkeyshonestclose} & & & \gameintermediate{chooses keys for both parties when $d(\firstpw, \secondpw) \leq \delta$} & & garbled output randomness \\ \hhline{~------}
+& Game~\printgame{YGCRFEkeyshonestfarone} & & & \gameintermediate{chooses key for $\firstparty$ when $d(\firstpw, \secondpw) > \delta$} & & garbled output randomness \\ \hhline{~------}
+& Game~\printgame{YGCRFEkeyshonestfartwo} & & & \gameintermediate{chooses keys for both parties when $d(\firstpw, \secondpw) > \delta$} & & garbled output randomness \\ \hhline{~------}
+& Game~\printgame{YGCRFEtwohonesthybrid} & & & & \gameintermediate{simulates $\gfunc_{\firstindex}, \ginp_{\firstindex}$} & obliviousness \\ \hhline{~------}
+& Game~\printgame{YGCRFEtwohonest} & \gameintermediate{does not forward $\firstpw, \secondpw$} & & & \gameintermediate{simulates $\gfunc_{\secondindex}, \ginp_{\secondindex}$} & obliviousness \\ \hline \hline
+\multirow{3}{*}{\rotatebox{90}{\centering $\aparty$ honest, $\otherparty$ corrupt}} & Game~\printgame{YGCRFEresetmaliciousinput} & \gameintermediate{replaces the malicious $\NewSession$ input with the one given by $\SimYGCRFE$} & & & \gameintermediate{extracts malicious $\otherpw'$ from OT, and tells $\Func$ to replace the malicious $\NewSession$ input with $\otherpw'$} & \\ \hhline{~------}
+& Game~\printgame{YGCRFEkeyscorrupt} & & & \gameideal{chooses key for $\aparty$ when $d(\firstpw, \secondpw) > \delta$ (now fully implemented)} & & garbled output randomness \\ \hhline{~------}
+& Game~\printgame{YGCRFEsimulatedgfuncginp} & & & & \gameintermediate{simulates $\gfunc_{\aindex}, \ginp_{\aindex}$ using $d(\apw, \otherpw')$} & privacy \\ \hhline{~------}
+& Game~\printgame{YGCRFEonehonest} & \gameideal{does not forward $\apw$} & \gameideal{fully implemented} & & \gameideal{makes $\TestPwd$ query to set $\apw'$} & \\ \hline
+
+\end{tabular}
+\caption{A Summary of the Sequence of Games in the Proof of Theorem~\ref{theorem:YGCRFE}
+}
+\label{fig:YGCRFEproofsummary}
+\end{figure}
+
+\begin{games}
+\game{YGCRFEreal}
+\textbf{Real}
+
+%This is the real game (unchanged from the proof of Theorem~\ref{theorem:fake2}).
+This is the real execution of $\Prfe$ where the environment \Env runs the protocol (described in Figure \ref{fig:YGCRFE}) with parties $\firstparty$ and $\secondparty$, both having access to an ideal OT functionality $\Fot$, and an adversary \AdvA that, w.l.o.g., can be assumed to be the dummy adversary as shown in \cite[section 4.4.1]{FOCS:Canetti01}.
+
+\game{YGCRFElayout}
+\textbf{Adding Ideal Layout}
+
+This is the real game, but with dummy party and ideal functionality nodes thrown in and all previously existing nodes (except the environment) grouped into one machine, called the simulator ($\SimYGCRFE$, or $\Sim$ for short). 
+%This game is also unchanged from the proof of Theorem~\ref{theorem:fake2}.
+Please refer to Figure~\ref{fig:g0g1layout} for the differences between \previousgame and \thisgame.
+%We first make some purely conceptual changes that do not modify the input/output interfaces of \Env. 
+%In more detail, we add one relay (also referred to as \emph{dummy party}) on each of the wires between \Env and a party. 
+%We also add one relay covering all the wires between the dummy parties and real parties and call it \Func (and let \Func relay messages according to the original wires). 
+%We group all the formerly existing instances except for \Env into one machine and call it \Sim. 
+%Note that this implies that \Sim executes the code of the FRE functionality $\Frfe$ as depicted in Figure~\ref{fig:func-RFE}.
+
+\begin{figure}[!ht]
+ \centering
+\begin{tikzpicture}[node distance=0.25cm]
+  %left picture
+  \node[rectangle,draw,fill=none] (flipake) {$\Fot$};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (pi) [below=1.5cm of flipake] {$\firstparty$};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (pj) [right=1cm of pi] {$\secondparty$};
+  \node[circle,draw,fill=none] (adv) [right=1cm of pj,yshift=0.5cm] {\AdvA};
+  \node[rectangle,draw,fill=none,text width=3cm,text centered] (env) [below=1cm of pj] {\Env};
+  % from the parties to the helping functionalities
+  \draw[-] (flipake.south) edge (pi.north);
+  \draw[-] ([xshift=0.1cm] flipake.south) edge ([xshift=0.1cm] pj.north);
+  % between parties
+  \draw[-] (pi.east) edge (pj.west);
+  % from environment to (honest) parties
+  \draw[-] ([xshift=-0.5cm] env.north) edge[out=90,in=270] (pi.south);
+  \draw[-] ([xshift=0.5cm] env.north) edge[out=90,in=270] (pj.south);
+  % from environment to adversary
+  \draw (env.east) edge[out=0,in=270,looseness=0.5] (adv.south);
+  % the adversary controlling the channel
+  \draw[-] ([xshift=0.5cm] pi.east) edge[out=90,in=180,looseness=1.5] (adv.west);
+  % from adversary to helping functionalities
+  \draw ([xshift=0.1cm] adv.north) edge[out=80,in=0] (flipake.east);
+%   \coordinate (dotsleft) at ($(pi.west)$);
+%     \draw [thick,dotted,-] ($(dotsleft)+(-0.2cm,0cm)$) -- ($(dotsleft)+(-0.5cm,0cm)$);
+ 
+  %right picture
+  \node[rectangle,draw,fill=none,text width=3cm,text centered] (env1) [right=1cm of env] {$\Env$};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (dpi) [above=0.5cm of env1] {};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (dpj) [right=of dpi] {};
+  \node[rectangle,draw,fill=none,text width=2cm] (f) [above=1.7cm of env1,xshift=0.5cm] {$\Func$};
+  
+  %simulator's box
+  \node[rectangle,draw,fill=none,densely dotted,minimum width=4.5cm,minimum height=3cm,
+   text width=4.5cm,text height=2.5cm,align=right] (sbox) [above=3cm of env1,xshift=1.5cm] {$\Sim$}; %dotted box % \SimYGCRFE
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (spi) [above=1.5cm of f,xshift=-0.2cm] {$\firstparty$};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (spj) [right=of spi,xshift=0.3cm] {$\secondparty$};
+  \node[rectangle,draw,fill=none] (fot) [above=1cm of spi]{$\Fot$}; 
+  \node[circle,draw,fill=none] (sadv) [right=1cm of spj,yshift=0.5cm] {$\AdvA$};
+  % wires from the parties to the helping functionalities
+  \draw[-] (fot.south) edge (spi.north);
+  \draw[-] ([xshift=0.1cm] fot.south) edge ([xshift=0.1cm] spj.north);
+  % wires between parties
+  \draw[-] (spi.east) edge (spj.west);
+  % wires from environment to adversary
+  \draw[-] ([xshift=0.1cm]sadv.south) edge[out=270,in=0] (env1.east);
+  % the adversary controlling the channel
+  \draw[-] ([xshift=0.3cm] spi.east) edge[out=90,in=180,looseness=1.5] (sadv.west);
+  % wires from adversary to helping functionalities
+  \draw ([xshift=0.1cm] sadv.north) edge[out=80,in=0] (fot.east);
+  
+  % wires outside the simulator
+  \draw[-] (dpj.south) edge[dashed] (dpj.north); %inside dummy party Pj
+  \draw[-] (dpi.south) edge[dashed] (dpi.north); %inside dummy party Pi
+  \node (mergepoint) [above=0.5cm of f] {}; %dummy node for mergepoint
+  \draw[-] (dpj.north) edge[dashed,out=90,in=270,looseness=2] ([xshift=0.1cm]mergepoint.south); % the two merged wires, lower part
+  \draw[-] (dpi.north) edge[dashed,out=90,in=270,looseness=2] (mergepoint.south);
+  \draw[-] ([xshift=0.1cm]mergepoint.south) edge[dashed,out=90,in=270,looseness=1.5] (spj.south); %upper part
+  \draw[-] (mergepoint.south) edge[dashed,out=90,in=270,looseness=2] (spi.south);
+  \draw[-] ([yshift=-0.2cm,xshift=0.05cm]mergepoint.east) edge[looseness=3] ([yshift=-0.2cm,xshift=0.05cm]mergepoint.west); % the curve tying the wires together
+  \draw[-] ([yshift=-0.35cm,xshift=0.05cm]mergepoint.east) edge[looseness=3] ([yshift=-0.35cm,xshift=0.05cm]mergepoint.west);
+  \draw[-] (env1.north) edge (dpi.south);
+  \draw[-] ([xshift=0.97cm] env1.north) edge (dpj.south);
+\end{tikzpicture}
+ \caption{Transition from game~\printgame{real} (left) to game~\printgame{layout} (right), showing a setting where both parties are honest.}
+ \label{fig:g0g1layout}
+\end{figure}
+
+\game{YGCRFEbuildF}
+\textbf{Adding $\Func$'s Record-Keeping and $\TestPwd$ Interface}
+
+
+\textit{Modifications to $\Func$:}
+We now allow $\Func$ to do all of the record-keeping described in Figure~\ref{fig:func-RFE}.
+
+$\Func$ still forwards $\NewSession$ queries from the dummy parties in their entirety (including the \password) to $\SimYGCRFE$, but also records them.
+Since this is a matter of internal record-keeping only, this does not affect $\AdvA$'s view.
+
+\textit{Modifications to $\SimYGCRFE$:}
+$\SimYGCRFE$ creates $\NewKey$ queries for $\Func$ from whatever output the simulated parties produce. 
+In this game, $\Func$ still simply forwards the keys it is given to the dummy parties without modifying them, so this does not affect $\AdvA$'s view.
+\julia[inline]{Since, technically, modification of $\SimYGCRFE$ might change the output behaviour of $\Func$, you should first change $\Func$ and $\Sim$ and afterwards argue indistinguishability.}
+\sophia[inline]{Yeah, we combined two very minor changes into one game, but since they're so superficial I don't think it matters...}
+
+\game{YGCRFEkeyshonestclose}
+\textbf{Allowing $\Func$ to Choose Keys For Two Honest Parties With Close \Passwords}
+
+\textit{Modifications to $\Func$:}
+We now allow $\Func$ to follow the instructions in Figure~\ref{fig:func-RFE} to choose the key when $\firstparty$ and $\secondparty$ are both honest, and $d(\firstpw, \secondpw) \leq \delta$.
+
+We can use any environment who can distinguish this game from Game~\previousgame to build an adversary $\AdvB$ that can break the garbled output randomness property (Definition~\ref{def:garbledoutputrandomness}, Theorem~\ref{theorem:garbledoutputrandomness}) of our garbling scheme.
+
+\julia[inline]{I do not manage to fully follow the proof of this, that's why instead I just ask a question: in this game, you change \Func such that it either chooses a fresh random key for an honest session with close \passwords OR aligns the key if there already was one for this session. For the second case, the proof of indistinguishability should require the correctness of the protocol. Why don't you need that?}
+\sophia[inline]{It only requires the correctness of the protocol in this one case, where both parties are honest and their inputs are close. We use it implicitly - the two outputs will be XORs of the same values.}
+Since both parties are honest, in order to use the environment as a distinguisher, the adversary needs to give the environment a transcript of the parties' interactions ($\gfunc_{\firstindex}, \ginp_{\firstindex,\firstindex}, \gfunc_{\secondindex}, \ginp_{\secondindex,\secondindex}$) as well as the parties' output keys.
+Because we are in the OT hybrid model, the environment sees neither inputs to the OT nor its outputs.
+
+Our adversary $\AdvB$ executes $\SimYGCRFE$'s simulation of $\firstparty$ with the $\Func$ of Game~\previousgame with some modifications.
+First, it finds a \password $\pw$ such that $d(\firstpw, \pw) > \delta$.
+(Note that in order for this reduction to work, such a \password must be efficiently computable, which it is by the assumption in the statement of Theorem~\ref{theorem:YGCRFE}.)
+Instead of running $\gb$, $\AdvB$ queries the garbled output randomness challenger on $(\func, (\firstpw, \pw))$ to obtain $(\gfunc_{\firstindex}, \ginp_{\firstindex}, \random)$.
+Let $\ginp_{\firstindex} = (\ginp_{\firstindex, \firstindex}, \ginp_{\firstindex, \secondindex})$.
+Note that $\gfunc_{\firstindex}$ and $\ginp_{\firstindex,\firstindex}$ are generated by the challenger exactly as they would be by $\SimYGCRFE$, so those values do not change. 
+($\ginp_{\firstindex,\secondindex}$ is different, since $\pw$ is different from $\secondpw$, but $\ginp_{\firstindex,\secondindex}$ is not visible to the environment.)
+Since the adversary used a \password $\pw$ that is dissimilar to $\secondpw$, it uses the value $\random$ --- corresponding to the output label \emph{not} returned by $\ev(\gfunc_{\firstindex}, \ginp_{\firstindex})$ --- as $\key_{\firstindex, correct}$.
+($\ev(\gfunc_{\firstindex}, \ginp_{\firstindex})$ would give $\key_{\firstindex, wrong}$.) 
+If $b = 0$, the challenger will return the actual $\key_{\firstindex, correct}$ as $\random$, and the environment's view will be that of Game~\previousgame.
+If $b = 1$, the challenger will give a random value as $\random$.
+If $\random$ is truly random, then so is $\random \oplus \goutp_{\secondindex}$; so, the environment's view will be that of Game~\thisgame.
+(Note that we do not change the way in which $\secondparty$ generates $\gfunc_{\secondindex}, \ginp_{\secondindex}$, but we do set $\secondparty$'s output key to be the same as $\firstparty$'s. 
+This will be the key that an honest execution of the protocol would produce if $b = 0$, and random otherwise.)
+The adversary $\AdvB$ then returns the environment's guess as $b'$.
+The advantage of $\AdvB$ in the garbled output randomness game will be exactly the same as that of the environment in distinguishing between Game~\previousgame and Game~\thisgame.
+
+\game{YGCRFEkeyshonestfarone}
+\textbf{Allowing $\Func$ to Choose Keys For One of Two Honest Parties With Dissimilar \Passwords}
+
+\textit{Modifications to $\Func$:}
+We now allow $\Func$ to follow the instructions in Figure~\ref{fig:func-RFE} to choose the key for $\firstparty$ when $\firstparty$ and $\secondparty$ are both honest, and $d(\firstpw, \secondpw) > \delta$.
+\julia[inline]{This includes the case where one party already got a key? Or do you assume that $\firstparty$ always gets the output first?}
+\sophia[inline]{Order does not matter here - so, it covers both the case where $\secondparty$ already got their key, and the case where they didn't.}
+
+We can use any environment who can distinguish this game from Game~\previousgame to build an adversary $\AdvB$ that can break the garbled output randomness property (Definition~\ref{def:garbledoutputrandomness}, Theorem~\ref{theorem:garbledoutputrandomness}) of our garbling scheme.
+
+Our adversary $\AdvB$ executes $\SimYGCRFE$'s simulation of $\firstparty$ with the $\Func$ of Game~\previousgame with some modifications.
+Instead of running $\gb$, $\AdvB$ queries the garbled output randomness challenger on $(\func, (\firstpw, \secondpw))$ to obtain $(\gfunc_{\firstindex}, \ginp_{\firstindex}, \random)$.
+Note that $\gfunc_{\firstindex}$ and $\ginp_{\firstindex}$ are generated by the challenger exactly as they would be by $\SimYGCRFE$, so these values do not change. 
+If $b = 0$, the challenger will return the actual $\key_{\firstindex, correct}$ as $\random$, and the environment's view will be that of Game~\previousgame.
+If $b = 1$, the challenger will give a random value as $\random$.
+If $\random$ is truly random, then so is $\random \oplus \goutp_{\secondindex}$; so, the environment's view will be that of Game~\thisgame.
+The adversary $\AdvB$ then returns the environment's guess as $b'$.
+The advantage of $\AdvB$ in the garbled output randomness game will be exactly the same as that of the environment in distinguishing between Game~\previousgame and Game~\thisgame.
+
+\game{YGCRFEkeyshonestfartwo}
+\textbf{Allowing $\Func$ to Choose Keys For Both Honest Parties With Dissimilar \Passwords}
+
+\textit{Modifications to $\Func$:}
+We now allow $\Func$ to follow the instructions in Figure~\ref{fig:func-RFE} to choose the key for $\secondparty$ as well as for $\firstparty$ when $\firstparty$ and $\secondparty$ are both honest, and $d(\firstpw, \secondpw) > \delta$.
+
+We can use any environment who can distinguish this game from Game~\previousgame to build an adversary that can break the garbled output randomness property (Definition~\ref{def:garbledoutputrandomness}, Theorem~\ref{theorem:garbledoutputrandomness}) of our garbling scheme, exactly as we did in the reduction above.
+
+\game{YGCRFEtwohonesthybrid}
+\textbf{Simulating $\gfunc, \ginp$ for One of Two Honest Parties}
+
+\textit{Modifications to $\SimYGCRFE$:}
+Consider the case when both $\firstparty$ and $\secondparty$ are honest.
+In this game, the simulator replaces $\firstparty$'s garbled circuit and input with simulated ones.
+$\SimYGCRFE$ does not need to simulate anything relating to the OT, since the environment cannot observe OT functionality inputs or outputs if both participating parties are honest.
+$\SimYGCRFE$ uses the obliviousness simulator to generate $\gfunc_{\firstindex}, \ginp_{\firstindex}$ (while continuing to generate $\gfunc_{\secondindex}, \ginp_{\secondindex}$ honestly), and sends the garbled circuits and the appropriate parts of the garbled inputs between the parties.
+$\SimYGCRFE$ outputs $\bot$ bot as both parties' keys, since the outputs don't matter - $\Func$ takes care of outputting appropriate keys as of a few games ago (Game~\printgame{YGCRFEkeyshonestclose} if $d(\firstpw, \secondpw) \leq \delta$, and Games~\printgame{YGCRFEkeyshonestfarone},\printgame{YGCRFEkeyshonestfartwo} otherwise), so this change is not observable by the environment.
+
+We can use any environment who can distinguish this game from Game~\previousgame to build an adversary $\AdvB$ that can break the obliviousness property %(Definition~\ref{def:obliviousness}) 
+of our garbling scheme.
+$\AdvB$ executes $\SimYGCRFE$'s simulation of $\firstparty$ as in Game~\previousgame, but instead of generating $(\gfunc_{\firstindex}, \ginp_{\firstindex})$ and $(\gfunc_{\secondindex}, \ginp_{\secondindex})$ according to the protocol, it queries the obliviousness challenger on $(\func, (\firstpw, \secondpw))$ to obtain $(\gfunc_{\firstindex}, \ginp_{\firstindex})$.
+If $b = 0$, the challenger will return actual $(\gfunc_i, \ginp_i)$ values, and the environment's view we will be that of Game~\previousgame.
+If $b = 1$, the challenger will return simulated values, and the environment's view will be that of this game.
+The adversary $\AdvB$ then returns the environment's guess as $b'$.
+The advantage of $\AdvB$ in the obliviousness game will be exactly the same as that of the environment in distinguishing between Game~\previousgame and Game~\thisgame.
+
+\game{YGCRFEtwohonest}
+\textbf{Removing \Password Forwarding Always}
+
+\textit{Modifications to $\Func$:}
+We now modify $\Func$ to forward only $(\NewSession, \sid, \aparty)$ to $\SimYGCRFE$ (omitting the \password $\apw$) for $\aparty \in \{\firstparty, \secondparty\}$ when $\firstparty$ and $\secondparty$ are both honest. 
+
+\textit{Modifications to $\SimYGCRFE$:}
+In Game~\previousgame, $\SimYGCRFE$ started simulating $\firstparty$'s messages without using knowledge of $\firstpw$.
+$\SimYGCRFE$ now also simulates $\secondparty$'s messages by using the obliviousness simulator to generate the garbled circuit and input $\gfunc_{\secondindex}, \ginp_{\secondindex}$.
+
+We can use any environment who can distinguish this game from Game~\previousgame to build an adversary $\AdvB$ that can break the obliviousness property %(Definition~\ref{def:obliviousness}) 
+of our garbling scheme.
+$\AdvB$ executes $\SimYGCRFE$'s simulation of $\secondparty$ as in Game~\previousgame, but instead of generating $(\gfunc_{\secondindex}, \ginp_{\secondindex})$ according to the protocol, it queries the obliviousness challenger on $(\func, (\secondpw, \firstpw))$ to obtain $(\gfunc_{\secondindex}, \ginp_{\secondindex})$.
+If $b = 0$, the challenger will return actual $(\gfunc_{\secondindex}, \ginp_{\secondindex})$ values, and the environment's view we will be that of Game~\previousgame.
+If $b = 1$, the challenger will return simulated values, and the environment's view will be that of this game.
+The adversary $\AdvB$ then returns the environment's guess as $b'$.
+The advantage of $\AdvB$ in the obliviousness game will be exactly the same as that of the environment in distinguishing between Game~\previousgame and Game~\thisgame.
+
+\game{YGCRFEresetmaliciousinput}
+\textbf{Setting the Malicious Input as in the ``Standard Corruption Model''}
+
+\textit{Modifications to $\SimYGCRFE$:}
+In this game, $\SimYGCRFE$ sets a corrupt party $\otherparty$'s $\NewSession$ input according to the standard corruption model~\cite{FOCS:Canetti01}.
+It does so as soon as it sees $\otherpw'$, when it is given as an input to the ideal OT functionality. 
+Since $\Func$ does not currently use $\otherpw$, this does not affect the environment's view.
+
+\game{YGCRFEkeyscorrupt}
+\textbf{Allowing $\Func$ to Choose the Key For An Honest Party With a \Password Dissimilar to Its Corrupt Partners'}
+
+\textit{Modifications to $\Func$:}
+We now allow $\Func$ to follow the instructions in Figure~\ref{fig:func-RFE} to choose all keys.
+Note that the only remaining scenario this affects is the one where only one party $\aparty \in \{\firstparty, \secondparty\}$ is honest, and $d(\firstpw, \secondpw) > \delta$.
+If both parties are corrupt, or if only one party is corrupt and $d(\firstpw, \secondpw) \leq \delta$, $\Func$ still simply forwards the output key.
+
+We can use any environment who can distinguish this game from Game~\previousgame to build an adversary $\AdvB$ that can break the garbled output randomness property (Definition~\ref{def:garbledoutputrandomness}, Theorem~\ref{theorem:garbledoutputrandomness}) of our garbling scheme.
+Our adversary $\AdvB$ executes $\SimYGCRFE$'s simulation of $\firstparty$ with the $\Func$ of Game~\previousgame with some modifications.
+Instead of running $\gb$ first, it waits to see $\otherparty$'s input $\otherpw'$ to the ideal OT functionality, and then queries the garbled output randomness challenger on $(\func, (\apw, \otherpw'))$ to obtain $(\gfunc_{\aindex}, \ginp_{\aindex}, \random)$.
+Note that $\gfunc_{\aindex}$ and $\ginp_{\aindex}$ are generated by the challenger exactly as they would be by $\SimYGCRFE$, so those values do not change. 
+The adversary then uses $\random$ as $\key_{\aindex, correct}$.
+If $b = 0$, the challenger will return the actual $\key_{\aindex, correct}$ as $\random$, and the environment's view will be that of Game~\previousgame.
+If $b = 1$, the challenger will give a random value as $\random$.
+If $\random$ is truly random, then so is $\random \oplus \goutp_{\otherindex}$; so, the environment's view will be that of Game~\thisgame.
+The adversary $\AdvB$ then returns the environment's guess as $b'$.
+The advantage of $\AdvB$ in the garbled output randomness game will be exactly the same as that of the environment in distinguishing between Game~\previousgame and Game~\thisgame.
+
+\game{YGCRFEsimulatedgfuncginp}
+\textbf{Simulating Garbled Circuit and Inputs For An Honest Party With a Corrupt Partner}
+
+\textit{Modifications to $\SimYGCRFE$:}
+In this game, $\SimYGCRFE$ simulates $\gfunc_{\aindex}$ and $\ginp_{\aindex}$ when $\aparty$ is honest and $\otherparty$ is corrupt. 
+
+In more detail, $\SimYGCRFE$ proceeds as follows on behalf of $\aparty$:
+
+\begin{itemize}
+\item
+$\SimYGCRFE$ postpones step 1.
+\item 
+In step 2, $\SimYGCRFE$:
+\begin{itemize}
+\item Plays an OT sender as follows:
+\begin{itemize}
+\item Waits for $\otherparty$ to provide their select bits to the OT.
+As a result, $\SimYGCRFE$ learns the \password used by $\otherparty$, $\otherpw'$.
+\item If $d(\apw, \otherpw') \leq \delta$ sets $\outp = 1$, and sets $\outp = 0$ otherwise.
+\item Uses the privacy simulator for the garbling scheme to generate \linebreak $(\gfunc_{\aindex}, \ginp_{\aindex}, \deinp_{\aindex}) \gets \simulator(1^{\secparam}, \func, \outp)$.
+\item Parses $(\ginp_{\aindex,\aindex}, \ginp_{\aindex,\otherindex}) \gets \ginp_{\aindex}$.
+\item Sends $\ginp_{\aindex,\otherindex}$ to $\otherparty$ as the OT output.
+\end{itemize}
+\item Plays an OT receiver honestly.
+\end{itemize}
+\item 
+$\SimYGCRFE$ follows the instructions in Figure~\ref{fig:YGCRFE} for steps 3-8.
+\end{itemize}
+
+We can use any environment who can distinguish this game from Game~\previousgame to build an adversary $\AdvB$ that can break the privacy property %(Definition~\ref{def:privacy}) 
+of our garbling scheme.
+Our adversary $\AdvB$ executes $\SimYGCRFE$'s simulation of $\firstparty$ with some modifications.
+Instead of running the privacy simulator $\simulator$, it queries the privacy challenger on $(\func, (\apw, \otherpw'))$ to obtain $(\gfunc_{\aindex}, \ginp_{\aindex}, \deinp_{\aindex})$.
+If $b = 0$, the challenger will return actual $(\gfunc_{\aindex}, \ginp_{\aindex}, \deinp_{\aindex})$ values, and the environment's view will be that of Game~\previousgame; if $b = 1$, the challenger return simulated values, and the environment's view will be that of this game.
+The adversary $\AdvB$ then returns the environment's guess as $b'$.
+The advantage of $\AdvB$ in the privacy game will be exactly the same as that of the environment in distinguishing between Game~\previousgame and Game~\thisgame.
+
+\game{YGCRFEonehonest}
+\textbf{Removing \Password Forwarding To An Honest Party With a Corrupt Partner}
+
+\textit{Modifications to $\Func$:}
+%We now modify $\Func$ as follows: 
+\begin{itemize}
+\item
+If $\aparty$ is honest and $\otherparty$ is corrupt, then, upon receiving a $\NewSession$ query, $\Func$ forwards only $(\NewSession, \allowbreak \sid, \aparty)$ to $\SimYGCRFE$ (omitting the \password $\apw$).
+\item
+$\Func$ now processes $\TestPwd$ queries (which were not issued in any prior game) according to the instructions in Figure~\ref{fig:func-RFE}. 
+Given a $(\TestPwd, \sid, \aparty)$ query ($\aparty \in \{\firstparty, \secondparty\}$),
+if $d(\firstpw, \secondpw) \leq \delta$, $\Func$ sends $\apw$ to $\SimYGCRFE$.
+%(We do not consider $\delta \leq d(\firstpw, \secondpw) < \gamma$, since this construction has $\delta = \gamma$.)
+\end{itemize}
+
+\textit{Modifications to $\SimYGCRFE$:}
+Now that $\SimYGCRFE$ does not know $\aparty$'s \password, it must simulate the honest party's messages without that knowledge.
+
+In more detail, $\SimYGCRFE$ proceeds as follows on behalf of $\aparty$:
+
+\begin{itemize}
+\item
+$\SimYGCRFE$ postpones step 1.
+\item 
+In step 2, $\SimYGCRFE$:
+\begin{itemize}
+\item Plays an OT sender as follows:
+\begin{itemize}
+\item As in Game~\printgame{YGCRFEsimulatedgfuncginp}, waits for $\otherparty$ to provide their select bits to the OT.
+As a result, $\SimYGCRFE$ learns the \password used by $\otherparty$, $\otherpw'$.
+\item Makes a $(\TestPwd, \sid, \Party_i)$ query to $\Func$. 
+If $d(\apw, \otherpw') \leq \delta$ (that is, the adversary has approximately guessed $\aparty$'s \password), $\SimYGCRFE$ learns $\apw$, and sets $\apw' = \apw$.
+Otherwise, it sets $\apw'$ at random such that $d(\apw', \otherpw') > \delta$, and uses $\apw'$ in place of $\apw$ in the rest of the simulation.
+\item As in Game~\printgame{YGCRFEsimulatedgfuncginp}, If $d(\apw, \otherpw') \leq \delta$ sets $\outp = 1$, and sets $\outp = 0$ otherwise.
+\item As in Game~\printgame{YGCRFEsimulatedgfuncginp}, uses the privacy simulator for the garbling scheme to generate $(\gfunc_{\aindex}, \ginp_{\aindex}, \deinp_{\aindex}) \gets \simulator(1^{\secparam}, \func, \outp)$.
+\item As in Game~\printgame{YGCRFEsimulatedgfuncginp}, parses $(\ginp_{\aindex,\aindex}, \ginp_{\aindex,\otherindex}) \gets \ginp_{\aindex}$.
+\item As in Game~\printgame{YGCRFEsimulatedgfuncginp}, sends $\ginp_{\aindex,\otherindex}$ to $\otherparty$ as the OT output.
+\end{itemize}
+\item Plays an OT receiver honestly with $\apw'$.
+\end{itemize}
+\item 
+$\SimYGCRFE$ follows the instructions in Figure~\ref{fig:YGCRFE} for steps 3-8.
+\end{itemize}
+
+%\begin{itemize}
+%\item 
+%$\SimYGCRFE$ makes a $(\TestPwd, \sid, \Party_i)$ query to $\Func$. 
+%If $d(\pw_i, \pw_j') < \delta$ (that is, the adversary has approximately guessed $\Party_i$'s \password), $\SimYGCRFE$ learns $\pw_i$, and sets $\pw_i' = \pw_i$.
+%Otherwise, it sets $\pw_i'$ at random such that $d(\pw_i', \pw_j') \geq \delta$, and uses $\pw_i'$ in place of $\pw_i$ in the rest of the simulation.
+%\item
+%$\SimYGCRFE$ executes the rest of the simulation as in Game~\previousgame.
+%Note that thanks to its query to $\TestPwd$, $\SimYGCRFE$ knows everything it needs to in order to play the OT sender as described in Game~\previousgame.
+%\end{itemize}
+
+Nothing could have changed from the point of view of \Env.
+If $d(\apw, \otherpw') \leq \delta$, this game is identical to Game~\previousgame.
+If $d(\apw, \otherpw') > \delta$, a random $\apw'$ is used instead of $\apw$.
+However, $\apw'$ only affects the OT execution with $\aparty$ as receiver, where $\otherparty$ does not receive any outputs anyway.
+In this case, $\aparty$'s output key gets set randomly by $\Func$ as of Game~\printgame{YGCRFEkeyscorrupt}, so that does not change.
+
+\end{games}
+
+In Figure~\ref{fig:SimulatorYGCRFE}, we show the simulator $\SimYGCRFE$ for $\Prfe$.
+
+\begin{figure}[!ht]
+\noindent
+\scriptsize
+\fbox{\begin{minipage}{\linewidth-10pt}
+\begin{itemize}
+\item 
+Upon receiving $(\NewSession, \sid, \aparty)$ from $\Frfe^{P}$ for honest party $\aparty$ when $\otherparty$ is also honest, $\SimYGCRFE$ generates $\gfunc_{\aindex}, \ginp_{\otherindex}$ using the obliviousness simulator for the garbling scheme, and sends those to $\otherparty$.
+\item 
+Upon receiving $(\NewSession, \sid, \aparty)$ from $\Frfe^{P}$ for honest party $\aparty$ when $\otherparty$ is corrupt, $\SimYGCRFE$ does the following:
+\begin{itemize}
+\item
+$\SimYGCRFE$ postpones step 1.
+\item 
+In step 2, $\SimYGCRFE$:
+\begin{itemize}
+\item Plays an OT sender as follows:
+\begin{itemize}
+\item Waits for $\otherparty$ to provide their select bits to the OT.
+As a result, $\SimYGCRFE$ learns the \password used by $\otherparty$, $\otherpw'$.
+%\item Sends $\otherpw'$ to $\Func$ as $\otherparty$'s updated $\NewSession$ input, as part of the ``standard corruption'' model.
+\item Makes a $(\TestPwd, \sid, \Party_i)$ query to $\Func$. 
+If $d(\apw, \otherpw') \leq \delta$ (that is, the adversary has approximately guessed $\aparty$'s \password), $\SimYGCRFE$ learns $\apw$, and sets $\apw' = \apw$.
+Otherwise, it sets $\apw'$ at random such that $d(\apw', \otherpw') > \delta$, and uses $\apw'$ in place of $\apw$ in the rest of the simulation.
+\item If $d(\apw, \otherpw') \leq \delta$ sets $\outp = 1$, and sets $\outp = 0$ otherwise.
+\item Uses the privacy simulator for the garbling scheme to generate $(\gfunc_{\aindex}, \ginp_{\aindex}, \deinp_{\aindex}) \gets \simulator(1^{\secparam}, \func, \outp)$.
+\item Parses $(\ginp_{\aindex,\aindex}, \ginp_{\aindex,\otherindex}) \gets \ginp_{\aindex}$.
+\item Sends $\ginp_{\aindex,\otherindex}$ to $\otherparty$ as the OT output.
+\end{itemize}
+\item Plays an OT receiver honestly with $\apw'$.
+\end{itemize}
+\item 
+$\SimYGCRFE$ follows the instructions in Figure~\ref{fig:YGCRFE} for steps 3-8 with $\pw_i'$.
+\end{itemize}
+\end{itemize}
+Additionally, $\SimYGCRFE$ forwards all other instructions from \Env to \AdvA and reports all output of \AdvA towards \Env. Instructions of corrupting a player are only obeyed if they are received before the protocol started, i.e., before \Sim received any \NewSession query from $\Frfe^{P}$.
+\end{minipage}}
+\caption{Simulator $\SimYGCRFE$ for $\Prfe$} 
+\label{fig:SimulatorYGCRFE}
+\end{figure}

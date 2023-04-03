@@ -1,0 +1,56 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\subsubsection{The Randomized Fuzzy Equality Functionality}
+\label{sec:rfe}
+
+Figure~\ref{fig:func-RFE} shows the randomized fuzzy equality functionality $\Frfe^{P}$, which is essentially what $\FFAKE^{P}$ would look like assuming authenticated channels.
+The primary difference between $\Frfe^{P}$ and $\FFAKE^{P}$ is that the only \password guesses allowed by $\Frfe^{P}$ are the ones actually used as protocol inputs; this limits the adversary to guessing by corrupting one of the participating parties, not through man in the middle attacks.
+Like in $\FFAKE^{P}$, if a \password guess is ``similar enough'', the entire \password is leaked. This leakage could be replaced with any other leakage from Section~\ref{sec:model}; $\Frfe$ would leak the correctness of the guess, $\Frfe^{M}$ would leak which characters are the same between the two \passwords, etc.
+
+Note that, unlike the randomized equality functionality in the work of Canetti~\etal~\cite{PKC:CDVW12}, $\FFAKE^P$ has a $\TestPwd$ interface. 
+This is because $\NewKey$ does not return the necessary leakage to an honest user.
+So, an interface enabling the adversary to retrieve additional information is necessary.
+
+\begin{figure}[tb]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The functionality $\Frfe$ is parameterized by a security parameter~$\secparam$ and a tolerance $\delta$.
+      It interacts with an adversary~$\Sx$ and two parties $\firstparty$ and $\secondparty$ via the following queries:\\[-1.8em]
+      \begin{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\NewSession,\sid,\apw)$ from party $\aparty \in \{\firstparty,\secondparty\}$\mathversion{normal}:}
+        \begin{itemize}
+          \item Send $(\NewSession,\sid,\aparty)$ to~$\Sx$;
+          \item If this is the first \NewSession query,
+          or if this is the second \NewSession query and there is a record~$(\otherparty,\otherpw)$,
+          then record~$(\aparty,\apw)$.
+        \end{itemize}
+      \item 
+        \textbf{Upon receiving a query
+          \mathversion{bold}$(\TestPwd,\sid,\aparty)$ from the adversary~$\Sx$, $\aparty \in \{\firstparty,\secondparty\}$\mathversion{normal}:} \\
+        If records of the form $(\firstparty, \firstpw)$ and $(\secondparty, \secondpw)$ do not exist, if $\otherparty$ is not corrupted, or this is not the first $\TestPwd$ query for $\aparty$, ignore this query.
+        Otherwise, if $d(\firstpw, \secondpw) \leq \delta$, send $\apw$ to the adversary $\Sx$.
+      \item
+        \textbf{Upon receiving a query
+          \mathversion{bold}$(\NewKey,\sid,\aparty,\sk)$ from the adversary~$\Sx$, $\aparty \in \{\firstparty,\secondparty\}$\mathversion{normal}:} \\
+        If there are no records of the form~$(\aparty,\apw)$ and $(\otherparty, \otherpw)$, or if this is not the first \NewKey query for~$\aparty$, then ignore this query. 
+        Otherwise:
+        \begin{itemize}
+        \item If at least one of the following is true, then output~$(\sid,\sk)$ to party~$\aparty$.
+          \begin{itemize}
+           \item $\aparty$ is corrupted
+           \item $\otherparty$ is corrupted and $d(\firstpw,\secondpw) \leq \delta$
+          \end{itemize}
+        \item If both parties are honest, $d(\firstpw,\secondpw) \leq \delta$, and a key~$\otherkey$ was sent to~$\otherparty$,
+          then output~$(\sid,\otherkey)$ to~$\Party_i$.
+        \item In any other case, pick a new random key~$\akey$ of length~$\secparam$ and send~$(\sid,\akey)$ to~$\aparty$.
+        \end{itemize}
+      \end{itemize}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{Ideal Functionality $\Frfe^{P}$ for Randomized Fuzzy Equality}
+  \label{fig:func-RFE}
+\end{figure}

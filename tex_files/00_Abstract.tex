@@ -1,0 +1,22 @@
+% !TeX root = ../main.tex
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+ 
+Consider key agreement by two parties who start out knowing a common secret (which we refer to as ``\password'', a generalization of ``password''),
+but face two complications: 
+(1) the \password may come from a low-entropy distribution, and 
+(2) the two parties' copies of the \password may have some noise, and thus not match exactly.
+We provide the first efficient and general solutions to this problem that enable, for example, key agreement based on commonly used biometrics such as iris scans.\\
+\\
+The problem of key agreement with each of these complications individually has been well studied in literature.
+Key agreement from low-entropy shared \passwords is achieved by \emph{password-authenticated key exchange} (\PAKE), and 
+key agreement from noisy but high-entropy shared \passwords is achieved by information-reconciliation protocols as long as the two secrets are ``close enough.''
+However, the problem of key agreement from noisy low-entropy \passwords has never been studied.\\
+\\
+We introduce (universally composable) \emph{fuzzy password-authenticated key exchange} (\FAKE), which solves exactly this problem.
+\FAKE does not have any entropy requirements for the \passwords, and enables secure key agreement as long as the two \passwords are ``close'' for some notion of closeness.
+We also give two constructions. 
+The first construction achieves our \FAKE definition for any (efficiently computable) notion of closeness, including those that could not be handled before even in the high-entropy setting.
+It uses Yao's garbled circuits in a way that is only two times more costly than their use against semi-honest adversaries, but that guarantees security against malicious adversaries.
+The second construction is more efficient, but achieves our \FAKE definition only for \passwords with low Hamming distance.
+It builds on very simple primitives: robust secret sharing and \PAKE.

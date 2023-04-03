@@ -1,0 +1,303 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+For the proof, we describe an honest execution of the protocol $\PfakeRSS$ in the UC framework in Figure~\ref{fig:UC-FAKERSS}. See \cite{SCN:FreHesHof14} for a detailed description on how to execute protocols within the UC framework. This real protocol execution will be the starting point for our proof. We then proceed in a series of games, to end up with the ideal execution running with only dummy parties, a simulator and the ideal functionality $\FFAKE^M$. For convenience, we refer to a received protocol message as \emph{adversarially generated} if it was not produced by either $\firstparty$ or $\secondparty$.
+	We also refer to a query 
+	$(\NewKey,\sid,\aparty,\akey)$ from the adversary~\Sim with an honest party $\aparty$ as \emph{due} if
+	\begin{itemize}
+		\item there is a \web{fresh} record of the form~$(\aparty,\apw)$
+		\item this is the first \NewKey query for~$\aparty$
+		\item there is a record~$(\otherparty,\otherpw)$ with $d(\apw,\otherpw) \leq \delta$ and $\otherparty$ is honest
+		\item a key~$\otherkey$ was sent to the other party while $(\otherparty,\otherpw)$ was \web{fresh} at the time.
+	\end{itemize}
+We also define a masking function that reveals the positions of the identical bits:
+$$\msk{\pw}{\pw'}:=\left\{i | \pw_i = \pw'_i , i \in [n]\right\}$$
+
+
+\begin{figure}[htbp]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The parties $\firstparty, \secondparty$ are running with \FliPAKE.  \\
+      \textbf{Protocol Steps:}
+      \begin{enumerate}
+      \item
+        When a party $\aparty$, $i\in\{0,1\}$, receives an input $(\NewSession,\sid,\apw,\texttt{sender})$ from \Env, it does the following:  
+        \begin{itemize}
+         \item compute $(\vk,\sk)\getsr\SigGen(1^\SEC)$
+         \item query $\pwlen$ times $\FliPAKE$ with $(\NewSession,\sid,(\apw)_t,\vk)$, $t=1,...,\pwlen$, receiving back $(\sid,\ell_t,K_t)$ as answer
+         \item choose $U\getsr \F_q$ 
+         \item compute $C\gets\Share(U)$
+         \item compute $E\gets C+(K_t)_{t=1}^\pwlen$ 
+         \item compute $\sigma_E\gets\Sign(\vk,E)$
+         \item send $(\sid,E,\sigma_E,\vk)$ to $\otherparty$ 
+         \item set $\key\gets U$
+         \item send $(\sid,\key)$ towards \Env and terminate the session.
+        \end{itemize}
+      \item 
+       When a party $\aparty$, $i\in\{0,1\}$, receives an input $(\NewSession,\sid,\apw,\texttt{receiver})$ from \Env, it does the following:
+       \begin{itemize}
+         \item query $\pwlen$ times $\FliPAKE$ with $(\NewSession,\sid,(\apw)_t,\varepsilon)$, $t=1,...,\pwlen$, receiving back $(\sid,\ell_t,K'_t)$ as answer
+         \item if not all $\ell_t$ are equal or $\ell_1\neq\mathcal{VK}$, then abort
+       \end{itemize}
+      \item 
+        When $\aparty$, who already obtained an input $(\NewSession,\sid,\apw,\texttt{receiver})$ and thus holds a vector $(\sid,\ell_t,K'_t)$ obtained from $\FliPAKE$, receives a message $(\sid,E,\sigma_E,\vk)$ from $\otherparty$, it does the following:
+        \begin{itemize}
+         \item set $K':=(K'_t)_{t\in[n]}$
+         \item abort if $\vk\neq\ell_1$
+         \item abort if $\Vfy(\vk,\sigma_E,E)=0$
+         \item compute $U'\gets \Reconstruct(E-K')$
+         \item set $\key\gets U'$
+         \item send $(\sid,\key)$ towards \Env and terminate the session.
+        \end{itemize}
+       \end{enumerate}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{A UC Execution of $\PfakeRSS$}\label{fig:UC-FAKERSS}
+\end{figure}
+
+\begin{games}
+% **************************************************************
+%                                                              *
+%  Real execution
+%                                                              *
+% **************************************************************
+\game{real}
+\textbf{The real protocol execution.}
+This is the real execution of $\PfakeRSS$ where the environment \Env runs the protocol (cf. Figure \ref{fig:FAKERSS}) with parties $\firstparty$ and $\secondparty$, both having access to an ideal \liPAKE functionality $\FliPAKE$, and an adversary \AdvA that, w.l.o.g., can be assumed to be the dummy adversary as shown in \cite[section 4.4.1]{FOCS:Canetti01}.
+
+% **************************************************************
+%                                                              *
+%  Layout
+%                                                              *
+% **************************************************************
+\game{layout} 
+\textbf{Modeling the ideal layout.}
+We first make some purely conceptual changes that do not modify the input/output interfaces of \Env. We add one relay (also referred to as \emph{dummy party}) on each of the wires between \Env and a party. We also add one relay covering all the wires between the dummy parties and real parties and call it \Func (and let \Func relay messages according to the original wires). We group all the formerly existing instances except for \Env into one machine and call it \Sim. Note that this implies that \Sim executes the code of the \liPAKE functionality $\FliPAKE$. The differences are depicted in Figure~\ref{fig:g0g1layout} with $\Fot$ replaced by $\FliPAKE$.
+%\julia[inline]{To David: the reference should actually go to the functionality in the appendix, where the code of \liPAKE is shown.}
+
+% \begin{figure}[!ht]
+%  \centering
+% \begin{tikzpicture}[node distance=0.25cm]
+%   %left picture
+%   \node[rectangle,draw,fill=none] (flipake) {$\FliPAKE$};
+%   \node[rectangle,draw,fill=none,minimum size=0.7cm] (pi) [below=1.5cm of flipake] {$\firstparty$};
+%   \node[rectangle,draw,fill=none,minimum size=0.7cm] (pj) [right=1cm of pi] {$\secondparty$};
+%   \node[circle,draw,fill=none] (adv) [right=1cm of pj,yshift=0.5cm] {\AdvA};
+%   \node[rectangle,draw,fill=none,text width=3cm,text centered] (env) [below=1cm of pj] {\Env};
+%   % from the parties to the helping functionalities
+%   \draw[-] (flipake.south) edge (pi.north);
+%   \draw[-] ([xshift=0.1cm] flipake.south) edge ([xshift=0.1cm] pj.north);
+%   % between parties
+%   \draw[-] (pi.east) edge (pj.west);
+%   % from environment to (honest) parties
+%   \draw[-] ([xshift=-0.5cm] env.north) edge[out=90,in=270] (pi.south);
+%   \draw[-] ([xshift=0.5cm] env.north) edge[out=90,in=270] (pj.south);
+%   % from environment to adversary
+%   \draw (env.east) edge[out=0,in=270,looseness=0.5] (adv.south);
+%   % the adversary controlling the channel
+%   \draw[-] ([xshift=0.5cm] pi.east) edge[out=90,in=180,looseness=1.5] (adv.west);
+%   % from adversary to helping functionalities
+%   \draw ([xshift=0.1cm] adv.north) edge[out=80,in=0] (flipake.east);
+% %   \coordinate (dotsleft) at ($(pi.west)$);
+% %     \draw [thick,dotted,-] ($(dotsleft)+(-0.2cm,0cm)$) -- ($(dotsleft)+(-0.5cm,0cm)$);
+%  
+%   %right picture
+%   \node[rectangle,draw,fill=none,text width=3cm,text centered] (env1) [right=1cm of env] {\Env};
+%   \node[rectangle,draw,fill=none,minimum size=0.7cm] (dpi) [above=0.5cm of env1] {};
+%   \node[rectangle,draw,fill=none,minimum size=0.7cm] (dpj) [right=of dpi] {};
+%   \node[rectangle,draw,fill=none,text width=2cm] (f) [above=1.7cm of env1,xshift=0.5cm] {\Func};
+%   
+%   %simulator's box
+%   \node[rectangle,draw,fill=none,densely dotted,minimum width=4.5cm,minimum height=3cm,
+%    text width=4.5cm,text height=2.5cm,align=right] (sbox) [above=3cm of env1,xshift=1.5cm] {\Sim}; %dotted box
+%   \node[rectangle,draw,fill=none,minimum size=0.7cm] (spi) [above=1.5cm of f,xshift=-0.2cm] {$\firstparty$};
+%   \node[rectangle,draw,fill=none,minimum size=0.7cm] (spj) [right=of spi,xshift=0.3cm] {$\secondparty$};
+%   \node[rectangle,draw,fill=none] (sfipake) [above=1cm of spi]{$\FliPAKE$}; 
+%   \node[circle,draw,fill=none] (sadv) [right=1cm of spj,yshift=0.5cm] {\AdvA};
+%   % wires from the parties to the helping functionalities
+%   \draw[-] (sfipake.south) edge (spi.north);
+%   \draw[-] ([xshift=0.1cm] sfipake.south) edge ([xshift=0.1cm] spj.north);
+%   % wires between parties
+%   \draw[-] (spi.east) edge (spj.west);
+%   % wires from environment to adversary
+%   \draw[-] ([xshift=0.1cm]sadv.south) edge[out=270,in=0] (env1.east);
+%   % the adversary controlling the channel
+%   \draw[-] ([xshift=0.3cm] spi.east) edge[out=90,in=180,looseness=1.5] (sadv.west);
+%   % wires from adversary to helping functionalities
+%   \draw ([xshift=0.1cm] sadv.north) edge[out=80,in=0] (sfipake.east);
+%   
+%   % wires outside the simulator
+%   \draw[-] (dpj.south) edge[dashed] (dpj.north); %inside dummy party Pj
+%   \draw[-] (dpi.south) edge[dashed] (dpi.north); %inside dummy party Pi
+%   \node (mergepoint) [above=0.5cm of f] {}; %dummy node for mergepoint
+%   \draw[-] (dpj.north) edge[dashed,out=90,in=270,looseness=2] ([xshift=0.1cm]mergepoint.south); % the two merged wires, lower part
+%   \draw[-] (dpi.north) edge[dashed,out=90,in=270,looseness=2] (mergepoint.south);
+%   \draw[-] ([xshift=0.1cm]mergepoint.south) edge[dashed,out=90,in=270,looseness=1.5] (spj.south); %upper part
+%   \draw[-] (mergepoint.south) edge[dashed,out=90,in=270,looseness=2] (spi.south);
+%   \draw[-] ([yshift=-0.2cm,xshift=0.05cm]mergepoint.east) edge[looseness=3] ([yshift=-0.2cm,xshift=0.05cm]mergepoint.west); % the curve tying the wires together
+%   \draw[-] ([yshift=-0.35cm,xshift=0.05cm]mergepoint.east) edge[looseness=3] ([yshift=-0.35cm,xshift=0.05cm]mergepoint.west);
+%   \draw[-] (env1.north) edge (dpi.south);
+%   \draw[-] ([xshift=0.97cm] env1.north) edge (dpj.south);
+% \end{tikzpicture}
+%  \caption{Transition from game~\printgame{real} (left) to game~\printgame{layout} (right), showing a setting where both parties are honest.\label{fig:layout}}
+% \end{figure}
+
+% **************************************************************
+%                                                              *
+%  build layout of F
+%                                                              *
+% **************************************************************
+\game{buildF} 
+\textbf{Building $\FFAKE^M$.} In this game, we start modeling $\FFAKE^M$.
+First, we let \Func maintain a list of tuples of the form $(\aparty,\apw)$.
+Upon receiving a query of the form $(\NewSession,\sid,\apw,\role)$ from party $\aparty$, if this is the first \NewSession-query, or if this is the second \NewSession-query and there is a record~$(\otherparty,\otherpw)$, then \Func records~$(\aparty,\apw)$ and marks this record  as \web{fresh}. In any case the query $(\NewSession,\sid,\aparty,\apw,\role)$ is relayed to \Sim. Now that \Func knows about \passwords, we can add a \TestPwd interface to \Func as described in Figure~\ref{fig:func-UC-FAKE-testpwd}, using leakage functions $\leakageclose^M, \leakagemiddle^M$ and $\leakagefar^M$. We let \Sim parse outputs towards \Func as $(\NewKey,\sid,\aparty,\akey)$ by adding the \NewKey tag and the name of the party who produced the output. Additionally, we let \Func translate this back to $(\sid,\akey)$, send it to \Env via $\aparty$ and mark the corresponding record as \web{completed}.
+
+None of these modifications changes the output towards \Env compared to the previous game~\previousgame.
+
+% **************************************************************
+%                                                              *
+%  random session key for interrupted session
+%                                                              *
+% **************************************************************
+\game{interrupted}
+\textbf{\Func generates a random session key for an interrupted session.}
+Upon receiving a query $(\NewKey,\sid,\aparty,\akey)$ from \Sim, if there is a record of the form~$(\aparty,\apw)$ that is marked as \web{interrupted}, and this is the first \NewKey query for~$\aparty$, we let \Func output a random session key of length $\SEC$ to $\aparty$.
+Otherwise, it continues to relay $\akey$.
+
+Since the simulators described in game~\previousgame and game~\thisgame do not make use of the \TestPwd interface, none of the records of \Func are marked as \web{interrupted} and thus the output towards \Env is equally distributed in both games.
+
+% **************************************************************
+%                                                              *
+%  Dictionnary attacks against P (using corruption)
+%                                                              *
+% **************************************************************
+\game{dict} 
+\textbf{\Sim handles dictionary attacks using the \TestPwd interface.}
+In this game, we only change the simulation. Consider the following setting: $\aparty$ obtained input $(\NewSession,\sid,\apw,\role)$ and $\otherparty$ is corrupted and already provided its inputs to $\Flipake$.
+In this situation, \Sim will proceed simulation of $\aparty$ as follows:
+
+\Sim assembles $\pw_\Env\in\F_\alphabetsize^\pwlen$ from the queries to $\Flipake$ that $\otherparty$ issued. \Sim sends $(\TestPwd,\sid,\aparty,\pw_\Env)$ to \Func, obtaining either ``wrong guess'', ``correct guess'' and perhaps also a mask $M\subseteq [\pwlen]$ from \Func. If \Sim does not receive a mask, \Sim is not modified further.
+Else, let $I:=[\pwlen]\setminus M$ the set of mismatching indices, and $d:=|I|\leq\gamma$ their number.
+\Sim sets up keys $K, K'\in\F_q^\pwlen$ with $K_t=K'_t \getsr \F_q$ for the matching indices $t\in M$
+and $K_t,K'_t\getsr\F_\alphabetsize^2$ for the mismatching indices $t\in I$, where $K'$ denotes the $\Flipake$ output of $\otherparty$. \Sim now continues the simulation of $\aparty$ using $K$ as output of $\Flipake$. 
+
+We have to analyze different cases depending on the different outcomes of \TestPwd. 
+However, note that the modifications only have an impact on the output $\akey$ of $\aparty$ if the record gets \web{interrupted}, and only affect the transcript if the answer to the \TestPwd query contains a mask. Considering the case where \TestPwd
+\begin{itemize}
+	\item outputs $\vec{m}$ and sets the record \web{compromised}, i.e. $d\leq\gamma$ since the distribution of $K,K'$ only depends on the mask of the \passwords, the view of \Env is identically distributed in game~\thisgame and game~\previousgame;
+\item outputs ``wrong guess'' and sets the record \web{interrupted}, i.e. $d> \gamma$: $\aparty$ will now obtain a randomly chosen session key from \Func, substituting the key $\akey$ computed by \Sim. If $\aparty$ obtained $\role=\rolesender$, the output in game~\thisgame and game~\previousgame is equally distributed since the honest sender outputs a random $\F_q$ value according to the protocol description. If $\aparty$ obtained $\role=\rolereceiver$, both outputs are indistinguishable with overwhelming probability due to the smoothness of the RSS, since in game~\previousgame at least $\gamma +1 $ shares are random.
+\end{itemize}
+ 
+% **************************************************************
+%                                                              *
+%  m-i-t-m attack
+%                                                              *
+% **************************************************************
+\game{mitm}
+\textbf{Excluding man-in-the-middle attacks.}
+\expl{Here we actually need authentication. Reason: let's assume we do not have authenticated messages. What if only one component of $M_\Env$ differs from $E$? \Env, knowing the error positions of the \passwords, puts less than $\delta$ errors and then disturbs one of the encoded error positions. This is a different injected message, but should result in both parties performing successful distance checks in the real protocol. But since \Sim does not know whether an error position was disturbed or a matching position, and thus does not know whether the distance is now close enough or in the gray zone, this is not simulatable.}
+Again, in this game, we only change the simulation. We now consider the case where \Env injects a message into a session where both parties are honest. We modify \Sim as follows: upon receiving an adversarially generated $(\sid,M_\Env,\sigma_\Env,\vk_\Env)$ from \Env intended for party $\aparty$, $\Sim$ aborts.
+
+Observe that the simulation is only changed compared to the previous game if it is not aborted due to protocol instructions. This means that both games are equal unless all checks pass, especially $\Vfy(\vk_\Env,\sigma_\Env,M_\Env)=1$. Any distinguisher between game~\thisgame and game~\previousgame can thus be turned into a forger of a valid message w.r.t the verification key of an honest party. Indinstinguishability thus follows from the security of the one-time signature scheme.
+
+% **************************************************************
+%                                                              *
+%  F aligns session keys
+%                                                              *
+% **************************************************************
+\game{alignSK} 
+\textbf{\Func aligns session keys.}
+Upon receiving a query $(\NewKey,\sid,\aparty,\akey)$ from \Sim, if this query is \emph{due} then output~$(\sid,\otherkey)$ to~$\aparty$ where $\otherkey$ is the session key that was formerly sent to the other party. 
+% \expl{We have to add ``where none of the players is corrupted'' here although it is not written like this in $\FFAKE^M$. The reason is that in case of $\otherparty$ corrupted with matching key, $\FFAKE^M$ lets the adversary determine the key (1st bullet) and this triggers *before* the alignment bullet (2nd) can trigger. Since during the game hops we only modify F from first relaying everything to *not* relay keys in specific cases, we have to exclude every condition of the 1st bullet (which says when to relay) manually. Note that \web{compromised} and ``$P_i$ corrupted'' (the two other sub-bullets of the 1st bullet) are excluded by the due property. Update: deprecated since we now have due=honest session.}
+ 
+We now analyze distinguishability of this game from game~\previousgame.
+If \Env tampered with the transcript, the simulation in game~\printgame{mitm} ensures that the simulation aborts and there is thus no \NewKey query for $\aparty$. On the other hand, if \Env does not advise \AdvA to tamper with any message, perfect correctness of $\PfakeRSS$ protocol ensures that, in case of a due record where the parties hold close \passwords $\apw,\otherpw$ with $d(\apw,\otherpw)\leq \pwlen-r$, the output of \Func towards \Env is the same as in the previous game~\previousgame. Observe that perfect correctness directly follows from the perfect correctness of $\FliPAKE$ and the $r$-robustness of the secret sharing, which is \emph{always} able to correct up to $\pwlen-r$ errors.
+
+Note that \Func still differs from the functionality $\FFAKE^M$ in some aspects. First, it does not output randomly generated session keys towards \Env for honest sessions. Furthermore, it reports all \passwords to \Sim. We will take care of these remaining differences in the next games.
+
+% **************************************************************
+%                                                              *
+%  F generates random sk if other party is corrupted with non-matching pw
+%                                                              *
+% **************************************************************
+\game{dummy}
+\textbf{In some cases, \Func generates a random session key when the other party is corrupted.}
+Upon receiving a \NewKey query $(\NewKey,\sid,\aparty,\akey)$ from \Sim, if there is a fresh record of the form~$(\aparty,\apw)$, and this is the first \NewKey query for~$\aparty$, $\aparty$ is honest and $\otherparty$ corrupted and there is a record $(\otherparty,\otherpw)$ with $d(\apw,\otherpw) > \delta$, we let \Func pick a new random key~$\key$ from $\F_q$ and send~$(\sid,\key)$ to~$\aparty$. 
+\expl{Game \thisgame and game \printgame{randomSK} implement the ``in any other case, output a random session key'' aspect of \Func. For this, observe that the only untreated case regarding corruption is when only the other player is corrupted but the third sub-bullet of the 1st bullet does not trigger. Thus, we manually set the session key to be random in this game. All other untreated cases concern honest sessions, which will be handled in the next game.}
+
+The simulation ensures that the record $(\aparty,\apw)$ is either compromised or interrupted (cf. description of the simulator in game~\printgame{dict}). Thus, the modification has no effect since it only concerns fresh records.
+\expl{This argument will be more complicated if we consider adaptive corruptions!}
+
+% **************************************************************
+%                                                              *
+%  F generates random sk for honest session
+%                                                              *
+% **************************************************************
+\game{randomSK}
+\textbf{\Func generates a random session key for an honest session.}
+Upon receiving a \NewKey query $(\NewKey,\sid,\aparty,\akey)$ from \Sim, if there is a fresh record of the form~$(\aparty,\apw)$, and this is the first \NewKey query for~$\aparty$, both parties are honest and the \NewKey query is not \emph{due}, we let \Func pick a new random key~$\key$ from $\F_q$ and send~$(\sid,\key)$ to~$\aparty$. 
+
+In other words, \Func now generates a random session key upon a first \NewKey query for an honest party $\aparty$ with fresh record $(\aparty,\apw)$ where $\otherparty$ is also honest, if (at least) one of the following events happen:
+\begin{enumerate}
+ \item There is a record $(\otherparty,\otherpw)$ with $d(\apw,\otherpw) > \delta$; then, the probability that $\akey$ was already random in game~\previousgame is overwhelming due to the $r-1$-smoothness of the \RSS on random secrets. Note that to apply this property it is crucial that both parties are honest and thus the value $U$ is randomly chosen.
+ \item No session key was sent to $\otherparty$ yet; we just have to consider the case where there is a record $(\otherparty,\otherpw)$ with $d(\apw,\otherpw) \leq \delta$ since we already dealt with the other case in the first event. Due to the $r$-robustness of the \RSS, the session key in the previous game was $U$, which is distributed uniformly random in $\F_q$.
+ \item If there was a session key sent to $\otherparty$, the record $(\otherparty,\otherpw)$ was not fresh and thus interrupted or compromised at that time; since our simulation never issues \TestPwd queries for honest sessions (in fact, game~\printgame{mitm} states that \Sim aborts upon man-in-the-middle attacks with overwhelming probability), this event can not happen in our simulation. %interrupted: random anyway by \Func. interrupted or compromised: cannot happen due to unforgeability
+\end{enumerate} 
+
+% **************************************************************
+%                                                              *
+%  remove pw of honest session
+%                                                              *
+% **************************************************************
+\game{pw_honest}
+\textbf{Simulating without \password if both parties are honest.}
+In case of receiving a $(\NewSession,\sid,\apw,\role)$ from an honest $\aparty$, we modify \Func by forwarding only $(\NewSession,\sid,\aparty,\role)$ to \Sim. We now have to modify \Sim to proceed simulation without knowing $\pw$. Upon receiving $(\NewSession,\sid,\aparty,\role)$ from \Func for an honest $\aparty$, we let \Sim draw uniformly at random a ``dummy'' \password $\pw_\Sim$ and proceed the simulation of $\aparty$ using $\pw_\Sim$ as a \password.
+
+We first observe that \Env is oblivious of $\akey$ contained in the $(\NewKey,\sid,\aparty,\akey)$ query that \Sim will eventually send to \Func during the simulation (since \Func never lets the simulator determine $\akey$ for an honest session). We thus only have to consider the case where $\aparty$ has $\role=\texttt{sender}$. We show that \Env, knowing $\apw,\otherpw$ and seeing two transcripts, cannot tell which one  was generated using $\apw,\otherpw$ and which one was generated using  $\pw_\Sim,\otherpw$ with a random $\pw_\Sim$ unknown to \Env. But this is trivial since the distribution of the values $U,K$ does not depend on the \passwords: $U$ is randomly chosen from $\F_q$. $\FliPAKE$ ensures that $K$ is randomly chosen from $\F_q^\pwlen$. 
+\expl{Note that we do not have $K,K'\getsr(\F_q)^\pwlen$ since there the mask matters. The simple argument in this game crucially relies on the fact that the \Env does not get any leakage about $K'$.}
+
+% **************************************************************
+%                                                              *
+%  remove pw when partner is corrupted
+%                                                              *
+% **************************************************************
+\game{pw_corrupted}
+\textbf{Simulating without \password if someone is corrupted.}
+Upon receiving $(\NewSession,\sid,\apw,\role)$ from $\aparty$ where $\otherparty$ is corrupted, we modify \Func to only relay $(\NewSession,\sid,\aparty,\role)$ to \Sim. Additionally, we let \Sim draw uniformly at random a ``dummy'' \password $\pw_\Sim$ and proceed the simulation of $\aparty$ using $\pw_\Sim$ as a \password. Note that due to the simulation described in game~\printgame{dict}, \Sim will ask a \TestPwd query, and after this query the simulation described in that game is already independent of $\apw$ except when \Func's reply does not contain a mask, i.e., $d(\apw,\otherpw)> \gamma$. In this case, we now let \Sim set the output of $\FliPAKE$ towards $\aparty$ to be a random $K\getsr\F_q^\pwlen$. 
+%OTP since it works (using a dummy password as input to FliPAKE is possible but more tedious.
+
+Regarding indistinguishability, first note that in any case the input of $\aparty$ to $\FliPAKE$ does not impact any values and thus we only have to argue further in case \Sim is modified. Thus, $\aparty$'s record will get interrupted and $\aparty$ will obtain a uniformly random session key from \Func, meaning that we only have to consider the case where $\aparty$ has $\role=\texttt{sender}$ and argue indistinguishability of $E,\sigma_E,\vk$ generated with either $K$ depending on $\apw$ (as in the previous game) or $K\getsr\F_q^\pwlen$ (as in the current game). Opposed to the situation in game~\previousgame, note that now \Env knows $K'$. 
+
+Since $d(\apw,\otherpw)>\gamma = \pwlen-t-1$, at most $t$ components of $K'$ are the same as $K$ in \previousgame with large probability $1-\frac{\pwlen-t}{q}$, and thus w.h.p. $\Env$ learns at most $t$ components of $C$. Hence the transcript of the current and previous games are indistinguishable due to the strong $t$-privacy of the \RSS.
+
+Observe that now \Func is equal to $\FFAKE^M$ and \Sim is equal to the simulator described in Figure~\ref{fig:sim-FAKERSS}. The theorem thus follows.
+\end{games}
+
+\begin{figure}[ht!]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The simulator \Sim, initialized with a security parameter \SEC, initializes the dummy adversary \AdvA. \Sim emulates an ideal labeled $\iPAKE$ functionality $\FliPAKE$ as depicted in Figure~\ref{fig:func-liPAKE} for all calling entities in the system\footnote{An entity is any internally simulated ITM such as parties or the real-world adversary as well as ITMs outside \Sim such as the distinguisher \Env.}. Additionally, \Sim interacts with an ideal functionality $\FFAKE^M$ and a distinguisher, the environment \Env, via the following queries:\\[-1.8em]
+      \begin{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\NewSession,\sid,\aparty,\role)$ from $\FFAKE^M$\mathversion{normal}:}
+        initialize a party $\aparty$ and connect it to \AdvA. 
+        \begin{itemize}
+         \item If $\otherparty$ is honest, \Sim proceeds the UC protocol execution as described in Figure~\ref{fig:UC-FAKERSS} using $\pw_{\Sim}\getsr\F_\alphabetsize$ as \password for $\aparty$. (Cf. game~\printgame{pw_honest}.)
+         \item If $\otherparty$ is corrupted, then \Sim waits until $\otherparty$ submitted $\pwlen$ queries to $\FliPAKE$ and then assembles $\pw_\Env\in\F_\alphabetsize^\pwlen$ from them. \Sim sends $(\TestPwd,\sid,\aparty,\pw_\Env)$ to $\FFAKE^M$. If \Sim receives back a mask $M$, let $I:=[\pwlen]\setminus M$, and \Sim sets up $\pwlen$ $\F_q$-keys $K$ with $K_t=K'_t~\forall t\in I$ and $K_t\getsr\F_\alphabetsize\neq K'_t~\forall t\in M$, where $K'$ denotes the output of $\FliPAKE$ towards $\otherparty$. \Sim now continues the simulation of $\aparty$ using $K$ as outputs of $\FliPAKE$. (Cf. game~\printgame{dict}.) If \Sim does not receive a mask, \Sim sets the output of $\FliPAKE$ towards $\aparty$ to be $K\getsr\F_q^\pwlen$. (Cf. game~\printgame{pw_corrupted}.)
+      \end{itemize}
+      \item
+        \textbf{If an internally simulated party $\aparty$ produces an output 
+        \mathversion{bold}$(\sid,\akey)$\mathversion{normal}:}\\
+        Send $(\NewKey,\sid,\aparty,\akey)$ to $\FFAKE^M$.
+      \item
+        \textbf{If \Env sends $(\sid,M_\Env,\sigma_\Env,\vk_\Env)$ to an honest party $\aparty$:} if $\otherparty$ is honest, \Sim aborts after the $\Vfy$ step in the protocol, regardless of its outcome. (Cf. game~\printgame{mitm}.)
+        
+      \end{itemize}
+      Additionally, \Sim forwards all other instructions from \Env to \AdvA and reports all output of \AdvA towards \Env. Instructions of corrupting a player are only obeyed if they are received before the protocol started, i.e., before \Sim received any \NewSession query from $\FFAKE^M$.
+    \end{minipage}
+  \end{fboxenv}
+  \caption{The Simulator \Sim for $\PfakeRSS$}\label{fig:sim-FAKERSS}
+\end{figure}

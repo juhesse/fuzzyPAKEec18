@@ -1,0 +1,557 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+% \pad[inline]{This entire section will have to be checked due to major notation change ($\aparty$,$\otherparty$,$\firstparty$,$\secondparty$). Expect typos. Julia: checked.}
+% \pad[inline]{Todo: Use $\sk$ and $\ell$ notations consistent with $\aparty$. Julia: done for akey/otherkey, label see below.}
+% \julia[inline]{I agree with changing $\sk$ to the akey,otherkey stuff, but not with the labels. we use subscripts with them already, so this will get too complicated.}
+
+\begin{figure}[htbp]
+\centering
+\begin{fboxenv}
+\begin{minipage}{0.95\textwidth}
+	The functionality $\FliPAKE$ is parameterized by a security parameter~$\SEC$ and makes use of two initially empty lists $\Lpw$ and $\Ll$, storing \passwords and labels, respectively.
+It interacts with an adversary~$\Sx$ and the (dummy) parties $\firstparty$ and $\secondparty$ via the following queries:\\[-1.8em]
+\begin{itemize}
+	\item
+		\textbf{Upon receiving a query
+			\mathversion{bold}$(\NewSession,\sid,\apw,\role,\ell)$ from party $\aparty$\mathversion{normal}:}
+		\begin{itemize}
+			\item Send $(\NewSession,\sid,\aparty,\role,\ell)$ to \Sim;
+			\item If one of the following is true, 
+			record~$(\aparty,\apw)$ in $\Lpw$ and mark this record \web{fresh}, and
+			record~$(\aparty,\ell)$ in \Ll unless there already exists a record~$(\aparty,\cdot)$ in \Ll.
+			\begin{itemize}
+				\item This is the first \NewSession query %and $\role = \rolesender$
+				\item This is the second \NewSession query %, $\role = \rolereceiver$ 
+				and there is a record~$(\otherparty,\otherpw)$
+			\end{itemize}
+%			\item If this is the first \NewSession query,
+%				or if this is the second \NewSession query and there is a record~$(\otherparty,\otherpw)$ in \Lpw:
+%				\begin{itemize}
+%					\item Record~$(\aparty,\apw)$ in $\Lpw$ and mark this record \web{fresh}.
+%					\item Unless there exists a record~$(\aparty,\cdot)$, record~$(\aparty,\ell)$ in \Ll.
+%				\end{itemize}
+		\end{itemize}
+		\vspace{3mm}
+	\item
+		\textbf{Upon receiving a query
+			\mathversion{bold}$(\TestPwd,\sid,\aparty,\apw',\ell')$ from \Sim\mathversion{normal}:} \\
+		If there is a \web{fresh} record~$(\aparty,\apw)$ in $\Lpw$, then do:
+		\begin{itemize}
+			\item If $\apw=\apw'$, mark the record \web{compromised}; else mark it \web{interrupted};
+			\item Record~$(\otherparty,\ell')$ in $\Ll$, possibly overwriting any existing record $(\otherparty,\cdot)$.
+				\expl{This is the if as we don't want to deal with modification of flows before the session is initialized. Also we want that if you want to modify a label, you have to try to guess the \password.}
+
+		\end{itemize}
+		\vspace{3mm}
+	\item
+		\textbf{Upon receiving a query
+			\mathversion{bold}$(\NewKey,\sid,\aparty,\sk)$ from \Sim, where $|\sk|=\SEC$:\mathversion{normal} } \\
+		If there is a record~$(\otherparty,\ell)$ in $\Ll$, extract $\ell$ from it; otherwise set $\ell\gets\bot$.\\
+		If there is a record of the form~$(\aparty,\apw)$ in $\Lpw$, and this is the first \NewKey query for~$\aparty$, then:
+				\begin{itemize}
+					\item If at least one of the following is true, then output~$(\sid,\ell,\sk)$ to player~$\aparty$:
+						\begin{itemize}
+							\item The record is \web{compromised}
+							\item $\aparty$ is corrupted
+							\expl{Will never happen in the static case, since corrupted parties do not get \NewSession queries and thus do not have records in $\Lpw$.}
+							\item The record is \web{fresh}, $\otherparty$ is corrupted, and there is a record~$(\otherparty,\otherpw)$ with $\otherpw=\apw$
+							\expl{A (statically) corrupted $\otherparty$ does not receive a NewSession, following that it never gets a record not by Func and not by Sim, who never issues NewSessions for (statically) corrupted players. This means that this case is only triggered for adaptively corrupted players.}
+						\end{itemize}
+					\item If this record is \web{fresh}, both parties are honest, there is a record~$(\otherparty,\otherpw)$ with $\otherpw=\apw$, a key~$\sk'$ was sent to~$\otherparty$,
+						and $(\otherparty,\otherpw)$ was \web{fresh} at the time, then output~$(\sid,\ell,\sk')$ to~$\aparty$;
+					\item In any other case, pick a new random key~$\sk'$ of length~$\SEC$ and send~$(\sid,\ell,\sk')$ to~$\aparty$.
+					\comment{If \otherparty is corrupted with matching key, it gets sk from the adversary, so this case here (implicitly) only triggers for honest sessions.}
+				\end{itemize}
+			No matter what, mark the record $(\aparty,\apw)$ as \web{completed}.
+\end{itemize}
+\end{minipage}
+\end{fboxenv}
+\caption{Functionality $\FliPAKE$}\label{fig:func-liPAKE}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The parties $\firstparty$ and $\secondparty$ are running with $\Fcrs, \Fro$ and $\Fic$. 
+      
+      \textbf{Protocol Steps:}
+      \begin{enumerate}
+      \item
+        When a party $\aparty$, $i\in\bits$, receives an input $(\NewSession,\sid,\aparty,\apw,\ell)$ from \Env, it does the following:
+          \begin{itemize}
+           \item chooses $x\getsr\F_q$
+           \item sends $(\sid,\web{crs})$ to \Fcrs and receives $(\sid,(g,q))$ back
+           \item sends $(\sid,\Encrypt,\apw||\ell,g^x)$ to $\Fic$ and receives $(\sid,X^*)$ back
+           \item sends $(\sid,\ell,X^*)$ to $\otherparty$ and waits for an answer
+          \end{itemize}
+      \item 
+        When $\aparty$, who already obtained an input $(\NewSession,\sid,\aparty,\apw,\ell)$ and thus holds $(x,(g,q),X^*)$, receives a message $(\sid,\ell',Y^*)$ from $\otherparty$, it 
+        %NOTE: we do not check validity here, since \Fic only decrypts valid stuff.
+        \begin{itemize}
+%          \item chooses $y\getsr\F_q$
+%          \item sends $(\sid,\web{crs})$ to \Fcrs and receives $(\sid,(g,q))$ back
+%          \item sends $(\sid,\Encrypt,\secondpw||\ell',g^y)$ to $\Fic$ and receives $(\sid,Y^*)$ back
+%          \item sends $(\sid,\ell',Y^*)$ to $\firstparty$
+         \item sends $(\sid,\Decrypt,\apw||\ell,Y^*)$ to \Fic and receives $(\sid,X')$ back
+         \item sends $(\sid,X^*,Y^*,X'^y)$ to \Fro and receives $(\sid,\akey)$ back
+         \item outputs $(\sid,\ell',\akey)$ towards \Env and terminates the session.
+        \end{itemize}
+      \end{enumerate}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{A UC Execution of EKE2. We skip the $\role$ tags since they are not needed due to the symmetric layout of the protocol.}\label{fig:UC-EKE2}
+\end{figure}
+
+We proceed in a series of games, starting with the real execution of the protocol and ending up with the ideal execution, with a simulator. To abbreviate notation, we skip all $\role$ tags used by $\FliPAKE$ since they are not needed due to the symmetric layout of the protocol.
+For convenience, we refer to a query $(\NewKey,\sid,\aparty,\ell',\akey)$ from the adversary~\Sim as \emph{due} when:
+\begin{itemize}
+	\item $\aparty$ is honest
+	\item there is a \web{fresh} record of the form~$(\aparty,\apw)$ in $\Lpw$
+	\item this is the first \NewKey query for~$\aparty$
+	\item there is a record~$(\otherparty,\otherpw)$ in $\Lpw$ with $\apw=\otherpw$ and $\otherparty$ is honest
+	\item a key~$\otherkey$ was sent to the other party, and $(\otherparty,\otherpw)$ was \web{fresh} at the time.
+\end{itemize}
+\expl{Labels are contained in \NewKey queries only in the first hybrids of the proof.}
+
+\begin{games}
+\game{iPAKEreal}
+% **************************************************************
+%                                                              *
+%  Real execution
+%                                                              *
+% **************************************************************
+\textbf{The real protocol execution.}
+This is the real execution where the environment \Env runs the EKE2 protocol (see Figure \ref{fig:UC-EKE2}) with parties $\firstparty$ and $\secondparty$, both having access to ideal CRS, RO, and IC functionalities, and an adversary \AdvA that, w.l.o.g., is assumed to be the dummy adversary as shown in \cite[section 4.4.1]{FOCS:Canetti01}.
+
+\begin{figure}[!ht]
+ \centering
+\begin{tikzpicture}[node distance=0.25cm]
+  %left picture
+  \node[rectangle,draw,fill=none] (fro) {\Fro};
+  \node[rectangle,draw,fill=none] (fic) [right=of fro] {\Fic};  
+  \node[rectangle,draw,fill=none] (fcrs) [left=of fro] {\Fcrs};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (pi) [below=1.5cm of fro] {$\aparty$};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (pj) [below=1.5cm of fic] {$\otherparty$};
+  \node[circle,draw,fill=none] (adv) [right=1cm of pj,yshift=0.5cm] {\AdvA};
+  \node[rectangle,draw,fill=none,text width=3cm,text centered] (env) [below=1cm of pj] {\Env};
+  % from the parties to the helping functionalities
+  \draw[-] (fro.south) edge (pi.north);
+  \draw[-] ([xshift=0.1cm] fic.south) edge ([xshift=0.1cm] pi.north);
+  \draw[-] ([xshift=0.1cm] fro.south) edge ([xshift=0.1cm] pj.north);
+  \draw[-] ([xshift=0.2cm] fic.south) edge ([xshift=0.2cm] pj.north);
+  \draw[-] ([xshift=0.2cm] fcrs.south) edge ([xshift=-0.1cm] pj.north);
+  \draw[-] (fcrs.south) edge ([xshift=-0.1cm] pi.north);
+  % between parties
+  \draw[-] (pi.east) edge (pj.west);
+  % from environment to (honest) parties
+  \draw[-] (env.north) edge[out=90,in=270] (pi.south);
+  % from environment to adversary
+  \draw (env.east) edge[out=0,in=270,looseness=0.5] (adv.south);
+  % from adversary to corrupted parties
+  \draw[-] ([xshift=-0.1cm] adv.south) edge[out=270,in=0,looseness=0.5] (pj.east);
+  % the adversary controlling the channel
+  \draw[-] ([xshift=0.15cm] pi.east) edge[out=90,in=180,looseness=1.5] (adv.west);
+  % from adversary to helping functionalities
+  \draw (adv.north) edge[out=90,in=0] (fic.east);
+  \draw ([xshift=0.1cm] adv.north) edge[out=80,in=90,looseness=1.3] (fro.north);
+  \draw ([xshift=0.2cm] adv.north) edge[out=80,in=90,looseness=1.3] (fcrs.north);
+%   \coordinate (dotsleft) at ($(pi.west)$);
+%     \draw [thick,dotted,-] ($(dotsleft)+(-0.2cm,0cm)$) -- ($(dotsleft)+(-0.5cm,0cm)$);
+ 
+  %right picture
+  \node[rectangle,draw,fill=none,text width=3cm,text centered] (env1) [right=1cm of env] {\Env};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (pi1) [above=0.5cm of env1] {};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (pj1) [right=of pi1] {};
+  \node[rectangle,draw,fill=none,text width=2cm] (f) [above=1.7cm of env1,xshift=0.5cm] {\Func};
+  
+  %simulator's box
+  \node[rectangle,draw,fill=none,dotted,minimum width=6cm,minimum height=4cm,
+   text width=5cm,text height=3cm,align=right] (sbox) [above=2.9cm of env1,xshift=1.5cm] {\Sim};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (spi) [above=1cm of f,xshift=-0.2cm] {$\aparty$};
+  \node[rectangle,draw,fill=none,minimum size=0.7cm] (spj) [right=of spi,xshift=0.3cm] {$\otherparty$};
+  \node[rectangle,draw,fill=none] (sfro) [above=1cm of spi]{\Fro};
+  \node[rectangle,draw,fill=none] (sfic) [above=1cm of spj] {\Fic};
+  \node[rectangle,draw,fill=none] (sfcrs) [left=of sfro] {\Fcrs};
+  \node[circle,draw,fill=none] (sadv) [right=1cm of spj,yshift=0.5cm] {\AdvA};
+  % from the parties to the helping functionalities
+  \draw[-] (sfro.south) edge (spi.north);
+  \draw[-] ([xshift=0.1cm] sfic.south) edge ([xshift=0.1cm] spi.north);
+  \draw[-] ([xshift=0.1cm] sfro.south) edge ([xshift=0.1cm] spj.north);
+  \draw[-] ([xshift=0.2cm] sfic.south) edge ([xshift=0.2cm] spj.north);
+  \draw[-] ([xshift=0.2cm] sfcrs.south) edge ([xshift=-0.1cm] spj.north);
+  \draw[-] (sfcrs.south) edge ([xshift=-0.1cm] spi.north);
+  % between parties
+  \draw[-] (spi.east) edge (spj.west);
+  % from environment to adversary
+  \draw[-] ([xshift=0.1cm]sadv.south) edge[out=270,in=0] (env1.east);
+  % from adversary to corrupted parties
+  \draw[-] ([xshift=-0.1cm] sadv.south) edge[out=270,in=0,looseness=0.5] (spj.east);
+  % the adversary controlling the channel
+  \draw[-] ([xshift=0.3cm] spi.east) edge[out=90,in=180,looseness=1.5] (sadv.west);
+  % from adversary to helping functionalities
+  \draw (sadv.north) edge[out=90,in=0] (sfic.east);
+  \draw ([xshift=0.1cm] sadv.north) edge[out=80,in=90,looseness=1.3] (sfro.north);
+  \draw ([xshift=0.2cm] sadv.north) edge[out=80,in=90,looseness=1.3] (sfcrs.north);
+
+  % wires outside the simulator
+  \draw[-] (sadv.south) edge[out=270,in=0] (pj1.east); %adversary controlling right party
+  \draw[-] (pj1.east) edge[dashed] (pj1.center); %wires inside right party
+  \draw[-] (pj1.center) edge[dashed] (pj1.north);
+  \node (mergepoint) [above=0.4cm of f] {}; %dummy node for mergepoint
+  \draw[-] (pj1.north) edge[dashed,out=90,in=270,looseness=2] ([xshift=0.1cm]mergepoint.south); % the two merged wires, lower part
+  \draw[-] (pi1.north) edge[dashed,out=90,in=270,looseness=2] (mergepoint.south);
+  \draw[-] ([xshift=0.1cm]mergepoint.south) edge[dashed,out=90,in=270,looseness=1] (spj.south); %upper part
+  \draw[-] (mergepoint.south) edge[dashed,out=90,in=270,looseness=2] (spi.south);
+  \draw[-] ([yshift=-0.2cm,xshift=0.05cm]mergepoint.east) edge[looseness=3] ([yshift=-0.2cm,xshift=0.05cm]mergepoint.west); % the curve tying the wires together
+  \draw[-] ([yshift=-0.35cm,xshift=0.05cm]mergepoint.east) edge[looseness=3] ([yshift=-0.35cm,xshift=0.05cm]mergepoint.west);
+  \draw[-] (env1.north) edge (pi1.south); % from Z to left party
+  \draw[-] (pi1.south) edge[dashed] (pi1.north); %inside left party
+\end{tikzpicture}
+ \caption{Transition from game~\printgame{iPAKEreal} (left) to game~\printgame{iPAKElayout} (right), showing a setting where $\otherparty$ is corrupted.}
+\end{figure}
+  
+  
+% **************************************************************
+%                                                              *
+%  Layout
+%                                                              *
+% **************************************************************
+\game{iPAKElayout} 
+\textbf{Modeling the ideal layout.}
+We first regroup and create new machines, similar to Game 1 in the proof of Theorem~\ref{theorem:fake2}. The new machine \Sim executes the code of the CRS, RO and IC functionalities as depicted in Figures~\ref{functionality:CRS}, \ref{functionality:RO}, and~\ref{functionality:IC}.
+
+% **************************************************************
+%                                                              *
+%  Birthday
+%                                                              *
+% **************************************************************
+\game{iPAKEbirthday}
+\textbf{Simulating the ideal functionalities.}
+We modify simulation of \Fro and \Fic as follows. We let \Sim implement Figure~\ref{functionality:IC} by maintaining a list \ListIC with entries of the form $(k,m,\alpha,\Encrypt|\Decrypt,c)$. \Sim handles encryption and decryption queries as follows:
+\begin{itemize}
+ \item Upon receiving $(\sid,\Encrypt,\key,m)$ (for shortness of notation, we will also write $\Encrypt_\key(m)$ for this query), if $\key\notin \F_\alphabetsize$ or $m\notin \G$ then abort. Else, if there is an entry $(\key,m,*,*,c)$ in \ListIC, \Sim replies with $(\sid,c)$. Else, \Sim chooses $c\getsr \G\setminus\{1\}$. If there already is a record $(*,*,*,*,*,c)$ in \ListIC, \Sim aborts. Else, \Sim adds $(\key,m,\bot,\Encrypt,c)$ to \ListIC and replies with $(\sid,c)$.
+ \item Upon receiving $(\sid,\Decrypt,\key,c)$ (or $\Decrypt_\key(c)$, for short), if $\key\notin \F_\alphabetsize$ or $c\notin \G$ then abort. Else, if there is an entry $(\key,m,*,*,c)$ in \ListIC, \Sim replies with $(\sid,m)$. Else, \Sim chooses $\alpha\gets \F_q^*$. If there already is a record $(*,*,g^\alpha,*,*,*)$ in \ListIC, \Sim aborts. Else, \Sim adds $(\key,g^\alpha,\alpha,\Decrypt,c)$ to \ListIC and replies with $(\sid,g^\alpha)$.
+\end{itemize} 
+Similarly, let \ListRO denote the list that \Sim maintains upon implementing Figure~\ref{functionality:RO}, containing entries of the form $(m,h)$. We let \Sim handle queries to \Fro as follows:
+\begin{itemize}
+\item Upon receiving $H(m)$, if $m\notin \bits^*\times\bits^*\times\G^3$, then abort.
+Else, if there is an entry $(m,h)$ in \ListRO, \Sim replies with $(\sid,h)$. Else, \Sim chooses $h\getsr \bits^k$.
+If there already is a record $(*,*,h)$ in \ListRO, \Sim aborts. Else, \Sim adds $(m,h)$ to \ListRO and replies with $(\sid,h)$.
+\end{itemize}
+%NOTE: H is globally collision resistant since the check does not depend on \sid.
+
+These modifications later allow \Sim to extract unique inputs from values obtained from the two functionalities. Especially, note that \ListIC will never contain $(*,\akey,*,*,\Encrypt,c)$, $(*,\otherkey,*,*,\Encrypt,c)$ with $\akey\neq \otherkey$. The entry $\alpha$ serves \Sim as a trapdoor for solving discrete-log type problems.
+
+Since $q$ is greater than $2^\SEC$, if the oracles are only queried a polynomial number of times, the birthday problem states that game~\previousgame and game~\thisgame are indistinguishable with probability overwhelming in $\SEC$.
+
+% **************************************************************
+%                                                              *
+%  build layout of F
+%                                                              *
+% **************************************************************
+\game{iPAKEbuildF} 
+\textbf{Building $\FiPAKE$.} In this game, we start modeling $\FliPAKE$.
+First, we let \Func maintain two initially empty lists: $\Lpw$, a list of tuples of the form $(\aparty,\apw)$ and $\Ll$, a list of tuples of the form $(\aparty,\ell)$. Upon receiving a query $(\NewSession,\sid,\apw,\ell)$ from (dummy) party $\aparty$, if this is the first \NewSession query, or if this is the second \NewSession query and there is a record~$(\otherparty,\otherpw,\ell')$, then \Func records~$(\aparty,\apw)$ in $\Lpw$ and marks this record  as \web{fresh}.
+If $\Ll$ does not contain any record $(\aparty,\cdot)$ so far, \Func also records $(\aparty,\ell)$ in $\Ll$. Then, \Func relays the query $(\NewSession,\sid,\apw,\ell)$ to \Sim. Now that \Func knows about \passwords and labels, we can add a \TestPwd interface to \Func as described in Figure~\ref{fig:func-iPAKE}.
+We let \Sim parse outputs $(\sid,\ell',\akey)$ towards \Func to be of the form $(\NewKey,\sid,\aparty,\ell',\akey)$ by adding the \NewKey tag and the name of the party who produced the output.
+\expl{The labels will be in the \NewKey queries only for the following hybrids, and they are removed in a later game when \Func is fully build.}
+Additionally, we let \Func translate this back to $(\sid,\ell',\akey)$ and send it to \Env via the dummy party $\aparty$, marking the corresponding record as \web{completed}.
+
+None of these modifications changes the output towards \Env compared to the previous game~\previousgame. 
+\expl{Two possibilities now: 1) remove label from NewKeys step by step or 2) remove then now altogether. In any case, the proof has to show: if not attacked, the labels are not modified. this means we cannot remove them now, since labels cannot be overwritten in \Func yet (no testpwd by sim so far) but they can be in the real execution, so there the label might change! thus 2) is not an option and we do 1).}
+
+% **************************************************************
+%                                                              *
+%  random session key for interrupted session
+%                                                              *
+% **************************************************************
+\game{iPAKEinterrupted}
+\textbf{\Func generates a random session key for an honest, interrupted session.}
+Upon receiving a query $(\NewKey,\sid,\aparty,\akey)$ from \Sim, if $\aparty$ is not corrupted and there is a record of the form~$(\aparty,\apw)$ that is marked as \web{interrupted}, and this is the first \NewKey query for~$\aparty$, we let \Func choose a random session key $\key^*$ of length $\SEC$. Additionally, \Func derives the label as follows: if there is a record $(\otherparty,\ell^*)$ in $\Ll$, extract $\ell^*$ from it; otherwise, set $\ell^*\gets\bot$. Then, \Func outputs $(\sid,\ell^*,\key^*)$ to $P$.
+
+If there is no such interrupted record, \Func continues to relay $\akey$ and $\ell'$.
+% \sophia[inline]{This is still exactly the idea functionality, right?}
+
+Since the simulators described in game~\previousgame and game~\thisgame do not make use of the \TestPwd interface, none of the records of \Func are marked as \web{interrupted} and thus the output towards \Env is equally distributed in both games.
+
+% **************************************************************
+%                                                              *
+%  Dictionnary attacks against \aparty (using m-i-t-m or corruption)
+%                                                              *
+% **************************************************************
+\game{iPAKEdictPi}
+\textbf{\Sim handles dictionary attacks against the client $\firstparty$ using the \TestPwd interface.}
+\expl{We cannot define \Sim in a way that a private $H'$ is only used for interrupted session as in the ACCP08 proof, since \Sim does not know. If we do change it, $H'$ also is used for compromised, which is detectable  since \Env might know the exponent of the element $g^x_\Env$ from its \password guess. I.e., \Env can reproduce an honest parties input to \Fro if he guesses successfully. In the $\Pr[BAD]=negl$ Lemma, we thus take a different approach of letting the CDH attacker decide whether to use $H'$ or not (in fact, since no $H'$ output is affecting anything, we just send $\sk=\bot$ and let \Func replace that with a random key later).}
+In this game, we will only change the simulation. First note that the client, the initiator of the protocol, is intended to send the first message, and we call him $\firstparty$. If both $\firstparty$ and $\secondparty$ are honest, $\firstparty$ obtained input and \Env advises \AdvA to substitute $(\sid,\ell',Y^*)$ with $(\sid,\ell_\Env,Y^*_\Env)$, or if $\secondparty$ is corrupted and produces $(\sid,\ell_\Env,Y^*_\Env)$ as first flow, then \Sim will proceed simulation of $\firstparty$ using $\ell_\Env$ and $Y^*_\Env$.
+\expl{Note that this includes the attack where \Env *just* changes the label and keeps the rest (i.e.,$Y^*$ or $X^*$) as it was. This should result in a \TestPwd query, since you should not be able to substitute the label (authenticated information) without knowing the \password.}
+In this situation, we modify \Sim as follows:
+upon receiving $(\sid,\ell_\Env,Y^*_\Env)$, if there is an entry $(\pw_\Env||\hat\ell,*,*,\Encrypt,Y^*_\Env)$ for any $\hat\ell\in\mathcal{L}$ in \ListIC\footnote{This entry is unique due to simulation of \Fic as described in game~\printgame{iPAKEbirthday}.}, the simulator asks a \TestPwd query $(\TestPwd,\sid,\firstparty,\pw_\Env,\ell_\Env)$ to \Func. \Sim then proceeds the simulation using $\pw_\Env$ and $\ell_\Env$ instead of $\firstpw$ and $\ell'$\footnote{Note that, since \Func does not leak any information at this point, \Sim cannot depend on the outcome of a \TestPwd query.}. If there is no entry $(\pw_\Env||\hat\ell,*,*,\Encrypt,Y^*_\Env)$ in \ListIC, \Sim sends $(\TestPwd,\sid,\firstparty,\firstpw,\ell_\Env)$ to \Func\footnote{Letting \Sim guess a \password that he actually knows seems a little artificial. Indeed, the simulation in this case will be changed in game~\printgame{iPAKEpw_honestPi} when \Sim becomes oblivious of $\firstparty$'s \password.}.
+%NOTE: this makes it complicated later, but it seems not to be very clean to just submit a random \password to \TestPwd.
+%\pad{Maybe we could send a dummy \password at this point, instead of in game~\printgame{iPAKEpw_honestPi}}
+%\julia[inline]{We could, but the whole layout of the proof is 1. switch to random session keys and 2. switch to simulated \passwords. So I'd rather change the \passwords later.}
+
+Regarding the label, observe that \Sim's \NewKey query will contain $\ell_\Env$ which was contained in the output of the honest $\firstparty$ (cf. Figure~\ref{fig:UC-EKE2}). Since \TestPwd queries overwrite any existing labels, there will be an entry $(\secondparty,\ell_\Env)$ in $\Ll$ and thus, regarding the label, the output towards \Env does not change compared to the previous game. Regarding the session key, we have to analyze different cases depending on whether $Y^*_\Env$ was generated using \Fic or not. However, observe that the only changes of session keys between this and the previous game occur whenever a \TestPwd query of \Sim causes a record to be marked as \web{interrupted}.
+
+\begin{itemize}
+ \item There is an entry $(\pw_\Env||\hat\ell,*,*,\Encrypt,Y^*_\Env)$ in \ListIC: if $\pw_\Env=\firstpw$, the record is marked \web{compromised} and the session key is not changed by \Func. If $\pw_\Env\neq\firstpw$, on the other hand, the record is marked \web{interrupted} and \Func hands out a random session key, as opposed to game~\previousgame. 
+	 %Furthermore, the rest of the transcript (i.e., $Y^*$) is produced using $\pw_\Env$ instead of $\otherpw$.
+	 However, since the session key is distributed as before, \Env can only detect this by reproducing $\firstparty$'s input $(\sid,X^*,Y^*_\Env,\CDH(\Decrypt_{\firstpw||\ell}(X^*)$, $\Decrypt_{\firstpw||\ell_\Env}(Y^*_\Env))$ to \Fro. 
+ %check effect of generating Y with a different \password. Analyze w.r.t. \ListIC entries. Should be no problem since Y is the only leakage of the randomness used by \otherparty in an interrupted session. Checked.
+ \expl{It might seem stupid of \Env to add a different label, but it still can do this. However, if the \password is not correct, the resulting key is random anyway. If it is correct, the simulated session key will get through, which will be random due to \Fro/\Fic when there is no record with key $\apw||\ell_\Env$ yet. So no problem here.}
+Lemma~\ref{lemma:BAD1} (see below) shows indistinguishability of game~\previousgame and game~\thisgame.
+ \item There is no entry $(*,*,*,\Encrypt,Y^*_\Env)$ in \ListIC: since the \TestPwd query will result in a compromised record, the modified simulation has no impact on the output towards \Env in this case.
+%NOTE: this is easy now but will be complicated later when we substitute \pw' by \pw_\Sim. We will have to analyze w.r.t. entries (...\Decrypt...) and might make use of \alpha in these entries.
+\end{itemize}
+
+The following lemma bounds the probability that an unsuccessful dictionary attack leads to a non-random looking session key. Since in this case the labels do not play any role (the encryption keys of the form $\password||label$ will not match regardless of the labels), we ignore them for the sake of simplicity.
+\begin{lemma}\label{lemma:BAD1}
+If \CDH holds in $\G$, then $\forall \firstpw,Y^*_\Env\gets\Env$, where $Y^*_\Env$ is a ciphertext generated through \Fic with some key $\pw_\Env\neq\firstpw$, $\firstpw\in\F_\alphabetsize$, it holds that 
+ \[
+  \Pr_{\thisgame}[\CDH(\Decrypt_{\firstpw}(X^*),\Decrypt_{\firstpw}(Y^*_\Env))\gets\Env(X^*)]=negl(\SEC).
+ \]
+\end{lemma}
+\begin{proof}
+ We create an attacker \BCDH given a \CDH instance $(g,A = g^a,B = g^b)$.
+\BCDH runs \Env simulating game~\thisgame as follows:
+\BCDH internally runs all of the participating machines, i.e. \Sim, \Func and the dummy parties as in game~\thisgame, but with some modifications.
+First, \BCDH computes $X^*\gets\Encrypt_{\firstpw}(A)$ and updates \ListIC accordingly, aborting if there already was an entry $(\firstpw,A,*,\Encrypt,*)$.
+Upon receiving a query $\Decrypt_{\firstpw}(Y^*_\Env)$, \BCDH again aborts if there already is an entry $(\firstpw,*,*,\Encrypt,Y^*_\Env)$.
+Otherwise, it draws $\beta\getsr\F_q$ and sets the answer to this query to be $B g^\beta$.
+This can happen multiple times (for different $Y^*_\Env$), and \BCDH keeps track of the pairs $(\beta,Y^*_\Env)$ in a list \ListCDH.
+The last modification concerns the part of the simulator's code of game~\thisgame where a value $Z\gets\Decrypt_{\firstpw}(Y^*)^a$ needs to be computed, but note that \BCDH does not know $a$.
+Instead, \BCDH just sets $Z\gets\bot$.
+%Observe that in the honest case $Z'$ is computable by \Sim since $\otherparty$ uses $Y^*$ where \Sim knows $y$.
+
+Finally, \BCDH picks a random entry from \ListRO asked by the environment, parses it as $((\firstpw,X^*,Y^*_\Env,Z),h)$, looks for an entry $(\beta,Y^*_\Env)$ in \ListCDH and outputs $Z/(g^a)^\beta$ as a \CDH solution.
+
+First, note that if \BCDH does not abort, it perfectly emulates \Env's view in game~\thisgame, since $A,B g^{\beta}$ are random in $\G$ and the record for $\firstparty$ will be interrupted, which means that \Func will output a random session key for $\firstparty$, overwriting $\bot$. Second, \BCDH only has to abort if there is a collision upon choosing random values from $\G$.
+
+Assume that \Env outputs $\CDH(\Decrypt_{\firstpw}(X^*),\Decrypt_{\firstpw}(Y^*_\Env))$ with non-negligible probability. This is only possible if \Env asked  both corresponding decryption queries. Existence of $(\pw_\Env,*,*,\Encrypt,Y^*_\Env)$ with $\pw_\Env\neq\firstpw$ in \ListIC ensures that the answer to $\Decrypt_{\firstpw}(Y^*_\Env)$ can be chosen by \BCDH as described above. Thus, \BCDH finds a correct \CDH solution with non-negligible probability $1/q_\Env$, where $q_\Env$ is the number of hash queries issued by \Env.
+\end{proof}
+ 
+% **************************************************************
+%                                                              *
+%  Dictionnary attack against \otherparty (using m-i-t-m or corruption)
+%                                                              *
+% **************************************************************
+\game{iPAKEdictPj}
+\textbf{\Sim handles dictionary attacks against the server $\secondparty$ using the \TestPwd interface.}
+Again, in this game we only change the simulation. Analogously to game~\previousgame, we let \Sim use the \TestPwd interface upon receiving adversarially generated $X^*_\Env,\ell_\Env$ upon simulating $\secondparty$. Observe that the only difference is due to the order of flows: if \Sim extracts an incorrect \password, he produces $Y^*$ using this wrong \password. However, $Y^*$ will be distributed as before and again, \Env can only detect the change by reproducing $\secondparty$'s input to \Fro, namely $(\sid,X^*_\Env,Y^*,\CDH(\Decrypt_{\secondpw||\ell_\Env}(X^*_\Env)$, $\Decrypt_{\secondpw||\ell'}(Y^*))$.
+
+Using an analogous argument to Lemma~\ref{lemma:BAD1}, indistinguishability from game~\previousgame follows from the hardness of \CDH in $\G$.
+
+% **************************************************************
+%                                                              *
+%  F aligns session keys
+%                                                              *
+% **************************************************************
+\game{iPAKEalignSK} 
+\textbf{\Func aligns session keys.}
+Upon receiving a query $(\NewKey,\sid,\aparty,\ell',\akey)$ from \Sim for a session, if this query is \emph{due} then output~$(\sid,\ell^*,\key^*)$ to~$\aparty$ where $\key^*$ is the session key that was formerly sent to the other party and the label $\ell^*$ is derived as usual: if there is a record $(\otherparty,\ell^*)$ in $\Ll$, extract $\ell^*$ from it; otherwise, set $\ell^*\gets\bot$. 
+% \expl{We have to add ``where none of the players is corrupted'' here although it is not written like this in $\FliPAKE$. The reason is that in case of $\otherparty$ corrupted with matching key, $\FliPAKE$ lets the adversary determine the key and this triggers *before* the alignment bullet can trigger. Since during the game hops we only modify \Func to *not* relay keys in specific cases, we have to exclude everything manually. Note that ``compromised'' and ``$\aparty$ corrupted'' is automatically excluded for a due record. Update: deprecated since we now have due=honest session.}
+ 
+We now analyze distinguishability of this game from game~\previousgame.
+% NOTE: the following was removed upon modifying iPAKE so that a corrupted \otherparty with a matching \password receives sk from the adversary. 
+% First, we consider the case where the other party is corrupted. Since in this case the simulation ensures that the record $(P,*,\pw)$ is either compromised or interrupted (cf. description of the simulator in games~\printgame{iPAKEdictPi} and~\printgame{iPAKEdictPj}), the modifications have no effect since they only concern fresh records. 
+If \Env tampered with the transcript, any player that received a modified message will not have a fresh record anymore (cf. simulation described in games~\printgame{iPAKEdictPi} and~\printgame{iPAKEdictPj}) and the output of this player towards \Env is not changed in this game.
+On the other hand, if \Env does not advise \AdvA to tamper with any message, \Func did not overwrite any labels and thus $\ell^*=\ell'$. Additionally, perfect correctness of the EKE2 protocol ensures that, in case of a due record, $\akey=\key^*$.
+
+Note that \Func still differs from the functionality $\FliPAKE$ described in Figure~\ref{fig:func-iPAKE} in some aspects. First, it does not output randomly generated session keys towards \Env for honest sessions. Furthermore, it reports all \passwords to \Sim. We will take care of these remaining differences in the next games.
+
+
+
+% **************************************************************
+%                                                              *
+%  F generates random sk if other party is corrupted with non-matching pw
+%                                                              *
+% **************************************************************
+\game{iPAKEdummy}
+\textbf{In some cases, \Func generates a random session key when the other party is corrupted.}
+Upon receiving a \NewKey query $(\NewKey,\sid,\aparty,\ell',\akey)$ from \Sim, if there is a fresh record of the form~$(\aparty,\apw)$ in $\Lpw$, and this is the first \NewKey query for~$\aparty$, $\aparty$ is honest and $\otherparty$ corrupted and there is a record $(\otherparty,\otherpw)$ in $\Lpw$ with $\apw\neq\otherpw$, we let \Func pick a new random key~$\key^*$ of length~$\SEC$ and send~$(\sid,\ell^*,\key^*)$ to~$\aparty$, where $\ell^*$, as usual, is taken from the list $\Ll$ or set to be $\bot$. 
+
+The simulation ensures that the record $(\aparty,\apw)$ is either compromised or interrupted (cf. description of the simulator in games~\printgame{iPAKEdictPi} and~\printgame{iPAKEdictPj}). Thus, the modification has no effect since it only concerns fresh records. 
+\expl{This game handles the only case where a session with a corrupted player might get a random session key from \Func. The argument will get more complicated when there are adaptive corruptions.}
+
+% **************************************************************
+%                                                              *
+%  F generates random sk for honest session
+%                                                              *
+% **************************************************************
+\game{iPAKErandomSK}
+\textbf{\Func generates a random session key for an honest session.}
+Upon receiving a \NewKey query $(\NewKey,\sid,\aparty,\ell',\akey)$ from \Sim, if there is a fresh record of the form~$(\aparty,\apw)$ in $\Lpw$, and this is the first \NewKey query for~$\aparty$, both parties are honest and the \NewKey query is not \emph{due}, we let \Func pick a new random key~$\key^*$ of length~$k$ and send~$(\sid,\ell^*,\key^*)$ to~$\aparty$, where $\ell^*$, as usual, is taken from the list $\Ll$ or set to be $\bot$.  
+
+In other words, \Func now generates a random session key upon a first \NewKey query for an honest party $\aparty$ with fresh record $(\aparty,\apw)$ where the other party is also honest, if (at least) one of the following events happens:
+\begin{enumerate}
+ \item There is a record $(\otherparty,\otherpw)$ in $\Lpw$ with $\apw\neq\otherpw$;
+ \item No output was sent to the other party yet;
+ \item If there was output to the other party, the record $(\otherparty,\otherpw)$ in $\Lpw$ was not fresh and thus interrupted or compromised at that time
+\end{enumerate} 
+ In all of these cases, \Sim chose a fresh $\akey$ following a uniform distribution and $\ell'$ was contained in the \NewSession query of $\aparty$'s partner, thus $\ell'=\ell^*$. Regarding the session key, \Env can only notice a difference if it reproduces $\akey$ by computing $\aparty$'s input $(\sid,X^\ast,Y^\ast,\CDH(\Decrypt_{\apw||\ell}(X^*),\Decrypt_{\apw||\ell'}(Y^*))$ to \Fro and sending it to \Fro via the adversary \AdvA.
+ 
+The following lemma bounds the probability that a session key of an unattacked session does not look random.
+\begin{lemma}\label{lemma:BAD2} 
+ If \CDH holds in $\G$, then $\forall \pw,\ell,\ell'\gets\Env$ with $\pw\in\F_\alphabetsize$ and $\ell,\ell'\in\mathcal{L}$ it holds that 
+ \[
+  \Pr_{\thisgame}[\CDH(\Decrypt_{\pw||\ell}(X^*),\Decrypt_{\pw||\ell'}(Y^*))\gets\Env(X^*,Y^*)]=negl(\SEC).
+ \] 
+\end{lemma}
+\begin{proof}
+ We only sketch the proof since it is similar to the proof of Lemma~\ref{lemma:BAD1}. Namely, the strategy of embedding (randomized versions of) a \CDH challenge into the simulation of game~\printgame{iPAKErandomSK} is done by just encrypting both \CDH challenge elements to obtain $X^*$ and $Y^*$. For the final argument, note that $\bot$ is not seen by \Env since it is either replaced using a random session key or a previously computed key. 
+\end{proof}
+It follows that game~\previousgame and game~\thisgame are indistinguishable.
+
+% **************************************************************
+%                                                              *
+%  remove labels from \NewKey
+%                                                              *
+% **************************************************************
+\game{iPAKElabels}
+\textbf{\Func always takes all labels from the list $\Ll$.}
+We modify \Func as follows: if \Func outputs $(\sid,\ell',\akey)$ towards $\aparty$ where $\ell',\akey$ are taken from a query $(\NewKey,\sid,\aparty,\ell',\akey)$ from \Sim, \Func extracts $\ell^*$ from a record $(\otherparty,\ell^*)$ in $\Ll$ or sets $\ell^*\gets\bot$ if such a record does not exist. \Func then outputs $(\sid,\ell^*,\akey)$ towards $\aparty$. We additionally modify \Sim to remove the labels from the \NewKey queries altogether.
+
+First observe that we can remove the labels from the \NewKey queries because, in this and the past games, we ensured that \Func now does not access this label anymore. However, we still have to argue indistinguishability of the current and the previous game. The cases where $\akey$ of \Sim is relayed by \Func towards $\aparty$ are the following:
+\julia[inline]{The label is taken from the label list by \Func in any case, not only in case of a relayed session key. Don't we have to argue indistinguishability of the due/align and other/random case as well?}
+\begin{itemize}
+ \item $\aparty$ has a compromised record
+ \item $\aparty$ is corrupted
+ \item $\aparty$ has a fresh record, its partner is corrupted and has a record with a matching \password
+\end{itemize}
+In the first case, we have that $\ell'=\ell^*$ since the label $\ell'$ outputted by $\aparty$ was also contained in a \TestPwd query by \Sim and overwrote any existing label send by $\aparty$'s partner. For the second case, observe that since we restrict to static corruption, corrupted players will not have records in $\Lpw$ and thus this case will never happen. 
+\expl{This argument for corrupted players getting \NewKey queries needs to be more sophisticated when we consider adaptive corruption!}
+In the third case, corruption of the partner ensures that \Sim issued a \TestPwd query which overwrote any existing label with $\ell'$, so $\ell'=\ell^*$ as well.
+
+Observe that now \Func acts like $\FliPAKE$ regarding the output of session keys and labels. The only remaining difference is that the \NewSession queries still contain the \passwords of the parties. In the next games, we will make the simulation independent of these \passwords.
+
+% **************************************************************
+%                                                              *
+%  remove \password of corrupted party
+%                                                              *
+% **************************************************************
+% %wlog, we say that a corrupted party does not receive a NewSession query from Z. Thus, this part is removed.
+% \game{iPAKEpw_Picorrupted}
+% \textbf{Simulate without $\pw$ for corrupted parties.}
+% In case of receiving a $(\NewSession,\sid,P,*,\pw)$ from a corrupted $P$, we modify \Func by forwarding only $(\NewSession,\sid,P,*)$ to \Sim.
+% However, in the byzantine corruption model \cite[Section 6.1]{FOCS:Canetti01}, as $P$ is corrupted, the original \NewSession query was seen by \Sim \emph{before} it was seen by \Func, and thus \Sim still knows $\pw$ and can proceed with the exact same simulation as in game~\previousgame.
+% 
+% Obviously, the output towards \Env is not affected by this modification and thus game~\previousgame and game~\thisgame are perfectly indistinguishable for \Env.
+
+% **************************************************************
+%                                                              *
+%  remove \password of honest Pj
+%                                                              *
+% **************************************************************
+\game{iPAKEpw_honestPj}
+\textbf{Simulate without $\secondpw$ if server $\secondparty$ is honest.}
+In case of receiving a $(\NewSession,\sid,\secondpw,\ell')$ from an honest $\secondparty$ playing the role of a server, we modify \Func by forwarding only $(\NewSession,\sid,\secondparty,\ell')$ to \Sim. We now have to modify \Sim to proceed simulation without knowing $\secondpw$.
+Upon receiving $(\NewSession,\sid,\secondparty,\ell')$ from \Func for an honest $\secondparty$, we let \Sim draw uniformly at random a ``dummy'' \password $\pw_\Sim$ and proceed the simulation of $\secondparty$ using $\pw_\Sim$ as a \password.
+
+We first note that, if at any time \Sim sends a \NewKey query to \Func containing a session key $\secondkey$ for $\secondparty$, this session key is only seen by \Env if $\secondparty$'s record is compromised. Otherwise, we thus only have to argue indistinguishability of the transcripts of game~\previousgame and game~\thisgame. 
+
+\begin{itemize}
+ \item \Env sends $\ell_\Env,X^*_\Env$, there is a record $(\pw_\Env||\hat\ell,X,*,\Encrypt,X^*)$ in \ListIC for some $\hat\ell\in\mathcal{L}$ and $\pw_\Env=\secondpw$: since \Sim will issue a \TestPwd query that will result in a compromised record (cf. simulation described in game~\printgame{iPAKEdictPj}), nothing is changed since $\pw_\Sim$ was never used, and $Y^*$ is generated using the correct \password $\pw_\Env$.
+ \item \Env sends $\ell_\Env,X^*_\Env$ , there is a record $(\pw_\Env||\hat\ell,X,*,\Encrypt,X^*)$ in \ListIC for some $\hat\ell\in\mathcal{L}$ and $\pw_\Env\neq\secondpw$: since $\secondparty$ will receive a random session key from \Func in this case (the record will be marked \web{interrupted}), we only have to argue indistinguishability of $Y^*$ generated with $\pw_\Env||\ell'$ instead of $\secondpw||\ell'$. Simulation of $\Fic$ ensures that $Y^*$ is distributed uniformly random as before. Observe that here it is crucial that even for a corrupted session, an interrupted record lets the functionality hand out a random session key, since \Sim has no means to decide whether it has to output a session key for $\secondparty$ that matches the session key that \Env can compute on behalf of $\firstparty$ from the message $(\ell',Y^*)$.
+ \expl{Reason for changing the functionality regarding corrupted session: assume \Env mounts a dictionary attack by corrupting one player. In case of a \password match, \Sim has to make sure that the session key outputted by the honest party and the one that \Env can compute from the honest party's message match. In case of a wrong \password, \Sim has to make sure that they both look random. Now note that \Sim has no means to get information from \FliPAKE. To ensure matching session keys, \Sim has to proceed the honest party's simulation with the extracted \password. Now if the functionality always relays the session key computed by \Sim to \Env, this would always result in matching keys, no matter if the extracted \password matches the honest party's \password or not. \Sim needs help from the functionality, which has more information in this case and rescues \Sim by handing out a random session key in case of an unsuccessul dictionary attempt in a corrupted session.}
+ \item \Env sends $\ell_\Env,X^*_\Env$ and no $\Encrypt$ record: the simulation described in game~\printgame{iPAKEdictPj}~tells \Sim to issue a \TestPwd query, but now using $\pw_\Sim$ instead of $\secondpw$. If, coincidentally, $\secondpw=\pw_\Sim$, nothing changes. On the other hand, if $\secondpw\neq\pw_\Sim$, $\secondparty$ obtains a random session key from \Func as opposed to the game before and $Y^*$ is created using $\pw_\Sim||\ell'$ instead of $\secondpw||\ell'$. This can only be detected if \Env reproduces $\secondparty$'s input to $\Fro$ from game~\previousgame, which happens only with negligible probability according to Lemma~\ref{lemma:BAD3} (see below). 
+%  before: Y* with pw', session key with pw'
+%  now: Y* with pw_j, random session key 
+ \item both parties honest and no injections: $\secondparty$ will obtain a uniformly random session key from \Func in this case, and thus the only difference is that $Y^*$ was created using $\pw_\Sim||\ell'$ instead of $\secondpw||\ell'$. Again, this is indistinguishable since $Y^*$ is distributed exactly as before.
+\end{itemize}
+
+The following lemma bounds the probability that an injected $X^*$ that was not obtained using encryption leads to a non-random looking session key.
+\begin{lemma}\label{lemma:BAD3}
+ If \CDH holds in $\G$, then $\forall \secondpw,\ell',\ell_\Env,X^*_\Env\gets\Env$, where $X^*_\Env$ was not generated using \Fic, $\ell',\ell_\Env\in\mathcal{L}$ and $\secondpw\in\F_\alphabetsize$, it holds that 
+ \[
+  \Pr_{\thisgame}[\CDH(\Decrypt_{\secondpw||\ell_\Env}(X^*_\Env),\Decrypt_{\secondpw||\ell'}(Y^*))\gets\Env(Y^*)]=negl(\SEC).
+ \] 
+\end{lemma}
+\begin{proof}
+ Note that the only difference to Lemma~\ref{lemma:BAD1} is that this time, no record $(*,*,*,\Encrypt,X^*_\Env)$ exists so the fact that \BCDH is able to embed an element of its \CDH challenge into $\Decrypt_{\secondpw}(X^*_\Env)$ is even more obvious. The rest of the proof is analogously to Lemma~\ref{lemma:BAD1}.
+\end{proof}
+
+% **************************************************************
+%                                                              *
+%  remove \password of honest Pi
+%                                                              *
+% **************************************************************
+\game{iPAKEpw_honestPi}
+\textbf{Simulate without $\firstpw$ if client $\firstparty$ is honest.}
+In a similar fashion, we now let \Func cut the \password from \NewSession queries to an honest $\firstparty$. We again have to modify \Sim to proceed simulation without knowing $\firstpw$. Upon receiving $(\NewSession,\sid,\firstparty,\ell)$ from \Func for an honest $\firstparty$, we let \Sim draw uniformly at random a ``dummy'' \password $\pw_\Sim$. \Sim proceeds the simulation of $\firstparty$ using $\pw_\Sim$ as a \password. 
+
+Additionally, we further change \Sim in case of a dictionary attack against client $\firstparty$, i.e., upon receiving $\ell_\Env,Y^*_\Env$ from \Env. After submitting a \TestPwd query with an extracted $\pw_\Env$, we let \Sim now choose $x'\getsr\F_P$ and add $(\pw_\Env||\ell,g^{x'},x',\bot,X^*)$ to \ListIC and proceed the simulation of $\firstparty$ using $x'$ instead of $x$. 
+% NOTE: \Sim needs to ``restart'' here by choosing x' and then setting \Decrypt_{\pw_\Env}(X^*):=g^x' to be able to compute a session key afterwards. This does not affect \Sim's output, it only lets \Sim fix it's random coins later on. This can not be detected if we only allow static corruption.
+
+\begin{itemize}
+ \item \Env sends $\ell_\Env,Y^*_\Env$, there is a record $(\pw_\Env||\hat\ell,Y,*,\Encrypt,Y^*)$ in \ListIC for some $\hat\ell\in\mathcal{L}$ and $\pw_\Env=\firstpw$: \Sim will issue a \TestPwd query that will result in a compromised record (cf. simulation described in game~\printgame{iPAKEdictPi}), resulting in a session key that is computed using $\pw_\Env$ instead of $\pw_\Sim$. Additionally, $X^*$ is generated using the incorrect \password $\pw_\Sim$. However, adjusting \ListIC as described above still allows \Sim to know the exponent of $\Decrypt_{\pw_\Env||\ell}(X^*)$ and continue the simulation, making it look like $\pw_\Env$ was used from the beginning. \Env's view is distributed exactly as before since $x',x$ are both uniformly random in $\F_P$.
+ \item \Env sends $\ell_\Env,Y^*_\Env$ , there is a record $(\pw_\Env||\hat\ell,Y,*,\Encrypt,Y^*)$ in \ListIC for some $\hat\ell\in\mathcal{L}$ and $\pw_\Env\neq\firstpw$: since $\firstparty$ will receive a random session key from \Func in this case (the record will be interrupted), we only have to argue indistinguishability of $X^*$ generated with $\pw_\Sim|\ell$ instead of $\firstpw||\ell$. Simulation of $\Fic$ ensures that $Y^*$ is distributed uniformly random as before. Again, it is crucial here that \Func helps \Sim by randomizing the session key if needed.
+ \item \Env sends $\ell_\Env,Y^*_\Env$ and no $\Encrypt$ record: the simulation described in game~\printgame{iPAKEdictPi}~tells \Sim to issue a \TestPwd query, but now using $\pw_\Sim||\ell$ instead of $\firstpw||\ell$. If, coincidentally, $\firstpw=\pw_\Sim$, nothing changes. On the other hand, if $\firstpw\neq\pw_\Sim$, $\firstparty$ obtains a random session key from \Func as opposed to the game before and $X^*$ was created using $\pw_\Sim||\ell$ instead of $\firstpw||\ell$. This can only be detected if \Env reproduces $\firstparty$'s input to $\Fro$ from game~\previousgame, which happens only with negligible probability using an argument very similar to Lemma~\ref{lemma:BAD3}. 
+ \item both parties honest and no injections: $\firstparty$ will obtain a uniformly random session key from \Func in this case, and thus the only difference is that $X^*$ was created using $\pw_\Sim||\ell$ instead of $\firstpw||\ell$. Again, this is indistinguishable since $X^*$ is distributed exactly as before.
+\end{itemize}
+ 
+Observe that in game~\printgame{iPAKEpw_honestPi}, $\Func=\FliPAKE$\footnote{We note that we can, w.l.o.g, assume that there are no \NewSession queries from \Env to corrupted parties. Thus, it is enough to remove the \passwords from the \NewSession queries given as input from \Env to honest parties.}, and thus the theorem follows. The complete description of the simulator of game~\printgame{iPAKEpw_honestPi} interacting with $\FliPAKE$ and \Env is given in Figure~\ref{fig:sim-iPAKE}.
+\end{games}
+
+\begin{figure}[ht!]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The simulator \Sim, initialized with a security parameter \SEC, first runs a group generation algorithm using \SEC to obtain a cyclic group $\G$ with generator $g$ of order $q$ with $\log_2(q) \geq \SEC$. 
+      Then, \Sim initializes the dummy adversary \AdvA.     
+      \Sim then interacts with an ideal functionality $\FliPAKE$ and an environment \Env via the following queries:\\[-1.8em]
+      \begin{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\NewSession,\sid,\aparty,\ell)$ from $\FliPAKE$\mathversion{normal}:}
+        \begin{itemize}
+          \item initialize a party $\aparty$, connect it to \AdvA and proceed the UC protocol execution described in Figure~\ref{fig:UC-EKE2} using $\pw_{\Sim}\getsr\F_\alphabetsize$ as \password and \Sim's random coins. (Cf. games~\printgame{iPAKEreal},\printgame{iPAKEpw_honestPj}~and~\printgame{iPAKEpw_honestPi}.)
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\sid,m)$ from any entity\mathversion{normal}:} (Cf. games~\printgame{iPAKElayout}~and~\printgame{iPAKEbirthday}.)\\
+        If $m\notin \langle g\rangle^3$, then abort. Else:
+        \begin{itemize}
+          \item if there is an entry $(m,h)$ then reply with $(\sid,h)$. 
+          \item else, choose $h\getsr\F_q$ and abort if there already is an entry $(*,*,h)$ in \ListRO. Else, reply with $(\sid,h)$.
+        \end{itemize}
+      \item
+        \textbf{If an internally simulated party $\aparty$ produces an output 
+        \mathversion{bold}$(\sid,\ell',\akey)$\mathversion{normal}:}\\
+        Send $(\NewKey,\sid,\aparty,\akey)$ to $\FliPAKE$. (Cf. game~\printgame{iPAKElayout}.)
+      \item
+        \textbf{If \Env sends $(\sid,\ell_\Env,Z^*_\Env)$ to an honest party $\aparty$:}
+        \begin{itemize}
+         \item if $(\pw_\Env||\hat\ell,*,*,\Encrypt,Z^*_\Env)\in\ListIC$ for any $\hat\ell\in\mathcal{L}$, then send $(\TestPwd,\sid,\aparty,\pw_\Env,\ell_\Env)$ to $\FliPAKE$ and proceed the simulation of $\aparty$ with $\pw_\Env$. (Cf. games~\printgame{iPAKEdictPi}~and~\printgame{iPAKEdictPj}.)
+         \item if $(*,*,*,\Encrypt,Z^*_\Env)\notin\ListIC$, then send $(\TestPwd,\sid,\aparty,\pw_\Sim,\ell_\Env)$ to $\FliPAKE$. (Cf. games~\printgame{iPAKEdictPi}~and~\printgame{iPAKEdictPj}.)
+         \item if $\aparty$ was started with input $(\NewSession,\sid,\aparty,\ell)$, choose $x'\getsr\F_P$, add $(\pw_\Env||\ell,g^{x'},x',\bot,Z^*)$ to \ListIC and proceed as if $x'$ was the value drawn uniformly random from $\F_q$ at the beginning of the simulation of $\aparty$. (Cf. game~\printgame{iPAKEpw_honestPi}.)
+        \end{itemize}
+
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\sid,\web{Encrypt},k,m)$ from any entity\mathversion{normal}:} (Cf. games~\printgame{iPAKElayout}~and~\printgame{iPAKEbirthday}.)\\
+        If $k\notin\F_\alphabetsize$ or $m\notin\G$ then abort. Else:
+        \begin{itemize}
+          \item if there is an entry $(k,m,*,*,c)$ in \ListIC, reply with $(\sid,c)$
+          \item else, choose $c\getsr\G\setminus\{1\}$. If there already is a record $(*,*,*,*,c)$ then abort. Else, add $(k,m,\bot,\Encrypt,c)$ to \ListIC and reply with $(\sid,c)$.
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\sid,\web{Decrypt},k,c)$ from any entity\mathversion{normal}:} (Cf. games~\printgame{iPAKElayout}~and~\printgame{iPAKEbirthday}.)\\
+        If $k\notin\F_\alphabetsize$ or $c\notin\G$ then abort. Else:
+        \begin{itemize}
+          \item if there is an entry $(k,m,*,*,c)$ in \ListIC, reply with $(\sid,m)$.
+          \item else, choose $\alpha\getsr\F_\alphabetsize^*$. If there already is a record $(*,g^\alpha,*,*,*)$ then abort. Else, add $(k,g^\alpha,\alpha,\Decrypt,c)$ to \ListIC and reply with $(\sid,g^\alpha)$.
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\sid,\web{crs})$ from any entity\mathversion{normal}: (Cf. game~\printgame{iPAKElayout}.)}
+        \begin{itemize}
+          \item reply with $(\sid,(g,q))$.
+        \end{itemize}
+      \end{itemize}
+      Additionally, \Sim forwards all other instructions from \Env to \AdvA and reports all output of \AdvA towards \Env. Instructions of corrupting a player are only obeyed if they are received before the protocol started, i.e., before \Sim received any \NewSession query from $\FliPAKE$.
+    \end{minipage}
+  \end{fboxenv}
+  \caption{The Simulator $\Sx$ for the EKE2 Protocol}\label{fig:sim-iPAKE}
+\end{figure}

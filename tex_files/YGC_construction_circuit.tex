@@ -1,0 +1,61 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\subsection{An Efficient Circuit $\func$ for Hamming Distance}
+\label{sec:efficientf}
+
+The Hamming distance of two \passwords $\pw, \pw' \in\F_{\alphabetsize}^{\pwlen}$ is equal to the number of locations at which the two \passwords have the same character. 
+More formally,
+\[d(\pw,\pw'):=|\left\{j\,|\,\pw[j]\neq\pw'[j], j\in[\pwlen]\right\}|.\]
+
+We design $\func$ for Hamming distance as follows:
+\begin{enumerate}
+\item
+First, $\func$ XORs corresponding (binary) \password characters, resulting in a list of bits indicating the (in)equality of those characters.
+\item
+Then, $\func$ feeds those bits into a threshold gate, which returns $1$ if at least $\pwlen - \delta$ of its inputs are $0$, and returns $0$ otherwise.
+$\func$ returns the output of that threshold gate, which is $1$ if and only if at least $\pwlen - \delta$ \password characters match.
+\end{enumerate}
+
+This circuit, illustrated in Figure~\ref{fig:fakecircuit}, is very efficient to garble; it only requires $\pwlen$ ciphertexts.
+Below, we briefly explain this garbling.
+Our explanation assumes familiarity with YGC literature~\cite[and references therein]{YGCintro}.
+Briefly, garbled gadget labels~\cite{CCS:BalMalRos16} enable the evaluation of modular addition gates for free (there is no need to include any information in the garbled circuit to enable this addition).
+However, for a small modulus $m$, converting the output of that addition to a binary decision requires $m-1$ ciphertexts.
+We utilize garbled gadgets with a modulus of $\pwlen + 1$ in our efficient garbling as follows:
+
+\begin{enumerate}
+\item
+\label{item:eqcheck}
+The input wire labels encode $0$ or $1$ modulo $\pwlen + 1$.
+However, instead of having those input wire labels encode the characters of the two \passwords directly, they encode the outputs of the comparisons of corresponding characters.
+If the $j$th character of $\aparty$'s \password is $0$, then $\aparty$ puts the $0$ label first; 
+however, if the $j$th character of $\aparty$'s \password is $1$, then $\aparty$ flips the labels. 
+Then, when $\otherparty$ is using oblivious transfer to retrieve the label corresponding to her $j$th \password character, she will retrieve the $0$ label if the two characters are equal, and the $1$ label otherwise.
+(Note that this pre-processing on the garbler's side eliminates the need to send $\ginp_{0,0}$ and $\ginp_{1,1}$ in Figure~\ref{fig:YGCRFE}.)
+\item
+\label{item:threshold}
+Compute a $\pwlen$-input threshold gate, as illustrated in Figure~6 of Yakoubov~\cite{YGCintro}. %Figure~\ref{fig:ninputthreshold}.
+This gate returns $0$ if the sum of the inputs is above a certain threshold (that is, if at least $\pwlen - \delta$ \password characters differ), and $1$ otherwise.
+This will require $\pwlen$ ciphertexts.
+\end{enumerate}
+
+Thus, a garbling of $\func$ consists of $\pwlen$ ciphertexts.
+Since \FAKE requires two such garbled circuits (Figure~\ref{fig:YGCRFE}), $2\pwlen$ ciphertexts will be exchanged.
+
+\input{tex_files/YGC_img_fpakecircuit}
+
+\paragraph{Larger \Password Characters.}
+
+If larger \password characters are used, then Step~\ref{item:eqcheck} above needs to change to check (in)equality of the larger characters instead of bits.
+Step~\ref{item:threshold} will remain the same.
+There are several ways to perform an (in)equality check on characters in $\F_{\alphabetsize}$ for $\alphabetsize \geq 2$:
+\begin{enumerate}
+\item 
+Represent each character in terms of bits.
+Step~\ref{item:eqcheck} will then consist of XORing corresponding bits, and taking an OR or the resulting XORs of each character to get negated equality.
+This will take an additional $\pwlen \log(\alphabetsize)$ ciphertexts for every \password character.
+\item
+Use garbled gadget labels from the outset. 
+We will require a larger OT ($1$-out-of-$\alphabetsize$ instead of $1$-out-of-$2$), but nothing else will change.
+\end{enumerate}

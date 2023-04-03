@@ -1,0 +1,65 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+\sophia[inline]{How can we use the OT one way, encryption the other way trick from Canetti~\etal~\cite{PKC:CDVW12}?}
+In this section, we describe a protocol realizing $\FAKE^{P}$ that uses Yao's garbled circuits~\cite{FOCS:Yao86}.
+We briefly introduce this primitive in Sec.~\ref{sec:YGCbackground} and refer to Yakoubov~\cite{YGCintro} for a more thorough introduction.
+
+The Yao's garbled circuit-based $\FAKE$ construction has two advantages:
+\begin{enumerate}
+\item 
+It is more flexible than other approaches; any notion of distance that can be efficiently computed by a circuit can be used.
+In Section~\ref{sec:efficientf}, we describe a suitable circuit for Hamming distance.
+The total size of this circuit is $O(\pwlen)$, where $\pwlen$ is the length of the \passwords used.
+Edit distance is slightly less efficient, and uses a circuit whose total size is $O(\pwlen^2)$.
+\item 
+There is no gap between the distances required for functionality and security --- that is, there is no leakage about the \passwords used unless they are similar enough to agree on a key. 
+In other words, $\delta = \gamma$.
+\end{enumerate}
+
+Informally, the construction involves the garbled evaluation of a circuit that takes in two \passwords as input, and computes whether their distance is less than $\delta$.
+Because Yao's garbled circuits are only secure against semi-honest garblers, we cannot simply have one party do the garbling and the other party do the evaluation.
+A malicious garbler could provide a garbling of the wrong function --- maybe even a constant function --- which would result in successful key agreement even if the two \passwords are very different.
+However, as suggested by Mohassel~\etal~\cite{PKC:MohFra06b} and Huang~\etal~\cite{SP:HuaKatEva12}, since a malicious evaluator (unlike a malicious garbler) cannot compromise the computation, by performing the protocol twice with each party playing each role once, we can protect against malicious behavior.
+They call this the \emph{dual execution} protocol.
+
+The dual execution protocol has the downside of allowing the adversary to specify and receive a single additional bit of leakage. 
+It is important to note that because of this, dual execution cannot directly be used to instantiate \fPAKE, because a single bit of leakage can be too much when the entropy of the \passwords is low to begin with --- a few adversarial attempts will uncover the entire \password.
+Our construction is as efficient as that of Mohassel~\etal and Huang~\etal, while guaranteeing no leakage to a malicious adversary in the case that the \passwords used are not close.
+We describe how we achieve this in Section~\ref{sec:YGCbackgroundOurs}. 
+
+%Generalizing this beyond fuzzy PAKE, by adding a secure comparison at the end of our protocol in the style of Mohassel~\etal and Huang~\etal, our technique can be used to evaluate any boolean function in such a way that security holds as long as the correct output is `no'. 
+%(That is, if the correct output is `no' then an adversary cannot convince an honest party that it is `yes', and cannot learn any additional bits. 
+%If the correct output is `yes', then an adversary can convince an honest party that it is `no', and can also learn an additional bit.) 
+%This is sufficient in any scenario where finding a `yes' instance is enough to establish mutual trust.
+
+Due to the symmetric layout of our construction, we skip all $\role$ tags in this section.
+
+\input{tex_files/YGC_background}
+
+\subsection{Construction}
+\label{sec:YGCconstruction}
+
+Building a $\FAKE$ from YGC and OT is not straightforward, since all constructions of OT assume authenticated channels, and \FAKE (or \PAKE) is designed with unauthenticated channels in mind.
+We therefore follow the framework of Canetti~\etal~\cite{PKC:CDVW12}, who build a UC secure \PAKE protocol using OT.
+We first build our protocol assuming authenticated channels, and then apply the generic transformation of Barak~\etal~\cite{C:BCLPR05} to adapt it to the unauthenticated channel setting.
+More formally, we proceed in three steps:
+\begin{enumerate}
+\item 
+First, in Section~\ref{sec:rfe}, we define a randomized fuzzy equality-testing functionality $\Frfe$, which is analogous to the randomized equality-testing functionality of Canetti~\etal 
+\item
+In Section~\ref{sec:rfeprot}, we build a protocol that securely realizes $\Frfe$ in the OT-hybrid model, assuming authenticated channels.
+\item
+In Section~\ref{sec:ygcfaketransformation}, we apply the transformation of Barak~\etal to our protocol.
+This results in a protocol that realizes the ``split'' version of functionality $\Frfe^P$, which we show to be enough to implement to $\FAKE^{P}$.
+Split functionalities, which were introduced by Barak~\etal, adapt functionalities which assume authenticated channels to an unauthenticated channels setting. 
+The only additional ability an adversary has in a split functionality is the ability to execute the protocol separately with the participating parties.
+\end{enumerate}
+
+
+\input{tex_files/YGC_construction_randomizedfuzzyequality}
+
+\input{tex_files/YGC_construction_randomizedfuzzyequalityprotocol}
+
+\input{tex_files/YGC_construction_transformation}
+
+\input{tex_files/YGC_construction_circuit}

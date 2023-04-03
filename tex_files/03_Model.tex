@@ -1,0 +1,227 @@
+% !TeX root = ../main.tex
+% !TEX root = ../main.tex
+% !TEX spellcheck = en_US
+
+We now present a security definition for fuzzy password-authenticated key exchange (\FAKE). 
+We adapt the definition of \PAKE from Canetti~\etal~\cite{EC:CHKLM05} to work for \passwords (a generalization of ``passwords'') that are similar, but not necessarily equal. 
+Our definition uses measures of the distance $d(\pw, \pw')$ between \passwords $\pw, \pw' \in\F_{\alphabetsize}^{\pwlen}$.
+In Section~\ref{sec:efficientf} and Section~\ref{sec:rssfake}, Hamming distance is used, but in the generic construction of Section~\ref{sec:ygcfake}, any (efficiently computable) other notion of distance can be used instead.
+%Be default, we define the similarity of two passwords $\pw, \pw' \in\F_{\alphabetsize}^{\pwlen}$ as the Hamming distance $\hdist(\pw, \pw')$, which is equal to the number of locations at which the two passwords have the same character. 
+%More formally,
+%\[d(\pw,\pw'):=|\left\{j\,|\,\pw[j]\neq\pw'[j], j\in[\pwlen]\right\}|.\]
+We say that $\pw$ and $\pw'$ are ``similar enough'' if $d(\pw, \pw') \leq \delta$ for a distance notion $d$ and a threshold $\delta$ that is hard-coded into the functionality.
+
+Parties first engage our functionality (described in Figure~\ref{fig:func-UC-FAKE}) by making $\NewSession$ queries, which include their pass-strings.
+Once both parties have made $\NewSession$ queries, the simulator can make $\NewKey$ queries on behalf of the parties, prompting the functionality to release an appropriate session key to the party in question.
+In an execution in which the adversary does not meddle, both session keys will be random: they will match if the pass-strings are ``similar enough'', and be independent otherwise.
+
+\paragraph{Modeling Adversarial Capabilities}
+To model the possibility of dictionary attacks, the functionality allows the adversary to make one \password guess against each player ($\firstparty$ and $\secondparty$). 
+In the real world, if the adversary succeeds in guessing (a \password similar enough to) party $\aparty$'s \password, 
+it can often choose (or at least bias) the session key computed by $\aparty$.
+To model this, the functionality then allows the adversary to set the session key for $\aparty$.
+
+As usual in security notions for key exchange, the adversary also sets the session keys for corrupted players. 
+In the definition of Canetti~\etal~\cite{EC:CHKLM05}, the adversary additionally sets $\aparty$'s key if $\otherparty$ is corrupted.
+However, contrary to the original definition, we do not allow the adversary to set $\aparty$'s key if $\otherparty$ is corrupted but did not guess $\aparty$'s \password.
+We make this change in order to protect an honest $\aparty$ from, for instance, revealing sensitive information to an adversary who did not successfully guess her \password, but did corrupt her partner.
+\expl{This change is approved by Ran, who remembered that $\FpwKE$ was only defined like this because their protocol admitted some situation where the adversary could force an all-zero session key. 
+Since it is not desirable that an adversary can determine the key an honest party uses, e.g., encrypts her secrets with, we prefer to modify it.}
+
+\paragraph{Roles}
+There are two categories of \fPAKE protocols: 
+\emph{symmetric protocols} in which the two parties execute the same code, and 
+\emph{asymmetric protocols} in which the two parties execute different code.
+Frequently in asymmetric protocols, one party can be seen as the ``sender'' who initiates the protocol, and the other can be seen as the ``receiver'' who responds.\footnote{To reflect the fact that, even in symmetric protocols, one party likely requests that the other engage in key exchange with her, such a request message can be pre-pended to any symmetric protocol.}
+
+In our ideal functionality, each party includes a $\role$ tag in her $\NewSession$ query; one party should identify herself as the sender (denoted as $\role = \rolesender$), while the other should identify herself as the receiver ($\role = \rolereceiver$).
+The functionality simply forwards these role tags to the simulator; the roles do not affect any of the functinality's decisions.
+
+In the case of symmetric protocols, the $\role$ tags are unnecessary, since a sender and a receiver execute the same code.
+In the case of asymmetric protocols, the simulator needs the $\role$ tags in order to determine which code to execute.
+It might look strange that the functionality ignores these $\role$ tags once it forwards them to the simulator; it might seem that, in the case of an asymmetric protocol, the functionality should only proceed if one of the roles provided is $\rolesender$ and the other $\rolereceiver$.
+However, in such a situation, the simulator can trigger the desired behavior --- an abort --- simply by never issuing a $\NewKey$ query.\footnote{
+An asymmetric protocol where the parties do \emph{not} abort when both are executing the same role's code (but the resulting keys are not distributed as they should be) cannot securely instantiate our functionality.}
+
+\paragraph{Notes}
+Another minor change we make is considering only two parties --- $\firstparty$ and $\secondparty$ --- in the functionality, instead of considering arbitrarily many parties and enforcing that only two of them engage the functionality. 
+This is because universal composability takes care of ensuring that a two-party functionality remains secure in a multi-party world.
+% \julia[inline]{This holds only if all helping functionalities (OT, CRS, RO etc.) are used in a \emph{global} way, i.e., it does not hurt security when the same CRS is used by many protocol executions. A famous counter example is a CRS (or RO) that is programmed by the simulator. This is done per protocol execution, and thus composability does not do the trick.}
+
+As in the definition of Canetti~\etal~\cite{EC:CHKLM05}, we consider only static corruptions in the standard corruption model of Canetti~\cite{FOCS:Canetti01}.
+Also as in their definition, we chose not to provide the players with confirmation that key agreement was successful.
+The players might obtain such confirmation from subsequent use of the key.
+%deleted, since said already in liPAKE section
+%\footnote{While this property is useful in certain cases, player-wise explicit authentication can easily be achieved by adding key confirmation flows~\cite{EC:BelPoiRog00}.}.
+%\pad{I think we need to present the implicit PAKE before that, as it's actually closer to $\FliPAKE$ than to~\cite{EC:CHKLM05}. done.}
+
+% Without explicit authentication, and so without any feedback but just a random session key, since the \TestPwd-query models a \password attempts, it does not output anything to the adversary. It just impacts the relation between the session keys given back to the two players
+% Indeed, the adversary could test the validity of its \password if it would have a way to check whether the two session keys match or not, and so if it would have access to the session key obtained by the honest player.
+
+\begin{figure}[tb]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      The functionality $\FAKE$ is parameterized by a security parameter~$\secparam$ and tolerances $\delta\leq\gamma$.
+      It interacts with an adversary~$\Sx$ and two parties $\firstparty$ and $\secondparty$ via the following queries:\\[-1.8em]
+      \begin{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\NewSession,\sid,\apw,\role)$ from party $\aparty$\mathversion{normal},}
+        where $\apw$ is a password and $\role = \rolesender$ implies that $\aparty$ wishes to initiate a key exchange, while $\role = \rolereceiver$ implies that $\aparty$ wishes to respond:
+        \sophia[inline]{Ran suggested additional information `aux' to be used here and passed to $\Sx$.}
+        \begin{itemize}
+          \item Send $(\NewSession,\sid,\aparty,\role)$ to~$\Sx$;
+          \item If one of the following is true, record~$(\aparty,\apw)$ and mark this record \web{fresh}:
+          \begin{itemize}
+             \item This is the first \NewSession query %and $\role = \rolesender$
+             \item This is the second \NewSession query %, $\role = \rolereceiver$ 
+             and there is a record~$(\otherparty,\otherpw)$
+          \end{itemize}
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\TestPwd,\sid,\aparty,\apw')$ from the adversary~$\Sx$\mathversion{normal}:} \\
+        If there is a \web{fresh} record~$(\aparty,\apw)$, then set $d\gets d(\apw,\apw')$ and do:
+        \begin{itemize}
+        	  \item If $d \leq \delta$, mark the record \web{compromised} and reply to $\Sx$ with ``correct guess'';
+          \item If $d > \delta$, mark the record \web{interrupted} and reply to $\Sx$ with ``wrong guess''.
+        \end{itemize}
+      \item
+        \textbf{Upon receiving a query
+          \mathversion{bold}$(\NewKey,\sid,\aparty,\sk)$ from the adversary~$\Sx$\mathversion{normal}:} \\
+        If there is no record of the form~$(\aparty,\apw)$, or if this is not the first \NewKey query for~$\aparty$, then ignore this query. 
+        Otherwise:
+        \begin{itemize}
+        \item If at least one of the following is true, then output~$(\sid,\sk)$ to player~$\aparty$:
+          \begin{itemize}
+           \item The record is \web{compromised}
+           \item $\aparty$ is corrupted
+           \item The record is \web{fresh}, $\otherparty$ is corrupted, and there is a record~$(\otherparty,\otherpw)$ with $d(\apw,\otherpw) \leq \delta$
+          \end{itemize}
+        \item If this record is \web{fresh}, both parties are honest,
+          there is a record~$(\otherparty,\otherpw)$ with $d(\apw,\otherpw) \leq \delta$,
+          a key~$\sk'$ was sent to~$\otherparty$, and $(\otherparty,\otherpw)$ was \web{fresh} at the time,
+          then output~$(\sid,\sk')$ to~$\aparty$;
+        \item In any other case, pick a new random key~$\sk'$ of length~$\secparam$ and send~$(\sid,\sk')$ to~$\aparty$.
+        \item Mark the record $(\aparty,\apw)$ as \web{completed}.
+        \end{itemize}
+      \end{itemize}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{Ideal Functionality \FAKE}
+  \label{fig:func-UC-FAKE}
+\end{figure}
+
+\leo[inline]{It seems that MITM attack and corruption of one of the parties (particularly $\Party_j$) can be handled very similarly in the functionality, and doing so can help clarity}
+
+% \sophia[inline]{Item 2 in the $\NewKey$ only hits the (fresh, fresh) situation.}
+% \julia[inline]{True. Feel free to include this in the text somewhere. It is always helpful for the reader to explain UC functionalities in more detail ;) }
+% \leo[inline]{The three options for handling NewKey query don't seem mutually exclusive: specifically, if $P_j$ is corrupted and knows the \password and $P_j$'s key is set first by NewKey query, does $P_i$'s NewKey query result in first bullet (third sub-bullet) or second bullet?}
+% \julia[inline]{That's true. It is not a problem though. It only concerns adaptive corruptions and \Sim will know the (randomly generated, by \Func) session key of $P_j$ due to corruption and can thus make sure the session keys match. However, it is not really nice. We should come up with a better case distinction. E.g., we could have the second sub-bullet say ``fresh and both players honest'', but I'm not sure whether this breaks something else.}
+% \pad[inline]{Note that exactly the same things happens in the original PAKE functionality. I think the intention is to use the first bullet that matches. Basically either we stay close to the ``reference'' functionality or we try to simplify it}
+% \julia[inline]{changed functionality to avoid this.}
+
+\paragraph{Leakage}
+By default, in the $\FAKE$ functionality the $\TestPwd$ interface provides the adversary with one bit of information --- whether the \password guess was correct or not. 
+This definition can be strengthened by providing the adversary with no information at all, as in implicit-only \PAKE ($\FiPAKE$, Figure~\ref{fig:func-iPAKE}), or weakened by providing the adversary with extra information when the adversary's guess is close enough. 
+
+To capture the diversity of possibilities, we introduce a more general  $\TestPwd$ interface, described in Figure~\ref{fig:func-UC-FAKE-testpwd}. 
+It includes three leakage functions that we will instantiate in different ways below---$\leakageclose$ if the guess is close enough to succeed, $\leakagefar$ if it is too far.
+Moreover, a third leakage function---$\leakagemiddle$ for medium distance---allows the adversary to get some information even if the adversary's guess is only somewhat close (closer than some parameter $\gamma \ge \delta$), but not close enough for successful key agreement. 
+We thus decouple the distance needed for functionality from the (possibly larger) distance needed to guarantee security; the smaller the gap between these two distances, the better, of course.
+
+% \begin{figure}[tb]
+%   \centering
+%   \begin{fboxenv}
+%     \begin{minipage}{0.95\textwidth}
+%       \begin{itemize}
+%       \item
+%         \textbf{Upon receiving a query
+%         \mathversion{bold}$(\TestPwd,\sid,\aparty,\apw')$ from the adversary~$\Sx$\mathversion{normal}:} \\
+%         If there is a \web{fresh} record~$(\aparty,\apw)$, then set $d\gets \hdist(\apw,\apw')$ and do:
+%         \begin{itemize}
+%         	  \item If $d<\delta$, mark the record \web{compromised} and reply to~$\Sx$ with $\leakageclose(\apw, \apw')$;
+% 	  \item If $\delta \leq d<\gamma$, mark the record \web{interrupted} and reply to~$\Sx$ with $\leakagemiddle(\apw, \apw')$;
+%           \item If $\gamma \leq d$, mark the record \web{interrupted} and reply to~$\Sx$ with $\leakagefar(\apw, \apw')$.
+%         \end{itemize}
+%       \end{itemize}
+%     \end{minipage}
+%   \end{fboxenv}
+%   \caption{A Modified $\TestPwd$ Interface to Allow for Different Leakage}
+%   \label{fig:func-UC-FAKE-testpwd}
+% \end{figure}
+
+\begin{figure}[tb]
+  \centering
+  \begin{fboxenv}
+    \begin{minipage}{0.95\textwidth}
+      \begin{itemize}
+      \item
+        \textbf{Upon receiving a query
+        \mathversion{bold}$(\TestPwd,\sid,\aparty,\apw')$ from the adversary~$\Sx$\mathversion{normal}:} \\
+        If there is a \web{fresh} record~$(\aparty,\apw)$, then set $d\gets \hdist(\apw,\apw')$ and do:
+        \begin{itemize}
+        	  \item If $d \leq \delta$, mark the record \web{compromised} and reply to~$\Sx$ with $\leakageclose(\apw, \apw')$;
+	  \item If $\delta < d \leq \gamma$, mark the record \web{compromised} and reply to~$\Sx$ with $\leakagemiddle(\apw, \apw')$;
+          \item If $\gamma < d$, mark the record \web{interrupted} and reply to~$\Sx$ with $\leakagefar(\apw, \apw')$.
+        \end{itemize}
+      \end{itemize}
+    \end{minipage}
+  \end{fboxenv}
+  \caption{A Modified $\TestPwd$ Interface to Allow for Different Leakage}
+  \label{fig:func-UC-FAKE-testpwd}
+\end{figure}
+
+Below, we list the specific leakage functions $\leakageclose$, $\leakagemiddle$ and $\leakagefar$ that we consider in this work, in order of decreasing strength (or increasing leakage):
+\begin{enumerate}
+\item
+The strongest option is to provide no feedback at all to the adversary.
+We define $\FAKE^N$ to be the functionality described in Figure~\ref{fig:func-UC-FAKE}, except that $\TestPwd$ is from Figure~\ref{fig:func-UC-FAKE-testpwd} with 
+\[
+\leakageclose^N(\apw, \apw') = \leakagemiddle^N(\apw, \apw') = \leakagefar^N(\apw, \apw') = \bot\,.\]
+%\julia[inline]{I deleted the following since this was already mentioned in the paragraph above. Also, here this future ref raises more questions than answers...}
+% The Implicit-only \PAKE functionality ($\FiPAKE$, Figure~\ref{fig:func-iPAKE}) that we will define in Section~\ref{sec:lipake} has such a leakage.
+
+\item 
+The basic functionality $\FAKE$, described in Figure~\ref{fig:func-UC-FAKE}, leaks the correctness of the adversary's guess. 
+That is, in the language of Figure~\ref{fig:func-UC-FAKE-testpwd},
+\begin{align*}
+\leakageclose(\apw, \apw') & = \mbox{``correct guess''}, \\
+\mbox{and} \qquad \leakagemiddle(\apw, \apw') & = \leakagefar(\apw, \apw') = \mbox{``wrong guess''}.
+\end{align*}
+The classical \PAKE functionality from~\cite{EC:CHKLM05} has such a leakage.
+
+\item
+Assume the two \passwords are strings of length $\pwlen$ over some finite alphabet, with the $j$th character of the string $\pw$ denoted by $\pw[j]$. We define $\FAKE^M$ to be the functionality described in Figure~\ref{fig:func-UC-FAKE}, except that $\TestPwd$ is from Figure~\ref{fig:func-UC-FAKE-testpwd}, with $\leakageclose$ and $\leakagemiddle$ that leak the indices at which the guessed \password differs from the actual one when the guess is close enough (we will call this leakage the \emph{mask} of the \passwords).
+That is,
+\begin{align*}
+\leakageclose^M(\apw, \apw') & = (\{j \mbox{ s.t. } \apw[j] = \apw'[j]\}, \mbox{``correct guess''}), \\
+\leakagemiddle^M(\apw, \apw') & = (\{j \mbox{ s.t. } \apw[j] = \apw'[j]\}, \mbox{``wrong guess''}) \\
+\mbox{and} \qquad \leakagefar^M(\apw, \apw') & = \mbox{``wrong guess''}.
+\end{align*}
+
+\leo[inline]{put this back if we get separability to work:
+Note that this functionality $\FAKE^M$ leaks enough information that a single guess within distance $\gamma$ of the actual \password will then enable the adversary to get within distance $\delta$ (and thus complete key agreement) through multiple on-line attempts, each guided by the leakage from the previous (by changing all the characters where the two \passwords differ, in at most as many attempts as the size of the alphabet). Even so, this functionality can provide \emph{one-time} security against guesses within distance $\gamma$. That is, a guess within distance $\gamma$, but not within distance $\delta$, will not violate security if the honest party never reuses a \password after an unsuccessful attempt. We do not define such security formally and do not pursue this direction further.
+}
+
+\item
+The weakest definition --- or the strongest leakage --- reveals the entire actual \password to the adversary if the \password guess is close enough.
+We define $\FAKE^P$ to be the functionality described in Figure~\ref{fig:func-UC-FAKE}, except that $\TestPwd$ is from Figure~\ref{fig:func-UC-FAKE-testpwd}, with 
+\[\leakageclose^P(\apw, \apw') = \leakagemiddle^P(\apw, \apw') = \apw  \mbox{ \ and \ }
+\leakagefar^P(\apw, \apw') = \mbox{``wrong guess''}.\]
+
+Here, $\leakageclose^P$ and $\leakagemiddle^P$ do not need to include ``correct guess'' and ``wrong guess'', respectively, because this is information that can be easily derived from $\apw$ itself.
+%\david[inline]{it can also be derived in the 3rd case}
+%\sophia[inline]{not for any abstract notion of leakage, I think...}
+%\david[inline]{sure! Both does it make sense to consider the mask difference if the distance is not the Hamming one? But you are right. Only the leakage of the \password really allows to compute any distance}
+\end{enumerate}
+
+\noindent
+The first two functionalities are the strongest, but there are no known constructions that realize them, other than through generic two-party computation secure against malicious adversaries, which is an inefficient solution.
+The last two functionalities, though weaker, still provide meaningful security, especially when $\gamma = \delta$.
+Intuitively, this is because strong leakage only occurs when an adversary guesses a ``close'' \password, which enables him to authenticate as though he knows the real \password anyway.
+\sophia[inline]{Can someone add an argument as to why it's ok when $\gamma > \delta$?}
+
+In Section~\ref{sec:ygcfake}, we present a construction satisfying $\FAKE^P$ for any efficiently computable notion of distance, with $\gamma = \delta$ (which is the best possible).
+We present a construction for Hamming distance satisfying $\FAKE^M$ in Section~\ref{sec:rssfake}, with $\gamma = 2\delta$. 

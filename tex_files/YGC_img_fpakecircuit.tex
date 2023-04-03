@@ -1,0 +1,59 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+\newcommand{\maxx}{12}
+\newcommand{\maxy}{6}
+\newcommand{\inputx}{0}
+\newcommand{\xorx}{\maxx/3}
+\newcommand{\thresholdx}{2*\maxx/3}
+\newcommand{\outputx}{\maxx}
+\newcommand{\inputygap}{\maxy/7}
+\newcommand{\midy}{3.5*\inputygap}
+
+\begin{figure}[tb]
+\begin{center}
+\begin{tikzpicture}[
+	circuit logic US,
+	tiny circuit symbols,
+	every circuit symbol/.style={fill=white,draw, logic gate input sep=4mm},
+	scale=0.70
+]
+
+\node (c1) at (\inputx,7*\inputygap) {$\firstpw^1$};
+\node (s1) at (\inputx,6*\inputygap) {$\secondpw^1$};
+\node (c2) at (\inputx,5*\inputygap) {$\firstpw^2$};
+\node (s2) at (\inputx,4*\inputygap) {$\secondpw^2$};
+\node (c3) at (\inputx,3*\inputygap) {$\firstpw^3$};
+\node (s3) at (\inputx,2*\inputygap) {$\secondpw^3$};
+\node (c4) at (\inputx,\inputygap) {$\firstpw^4$};
+\node (s4) at (\inputx,0) {$\secondpw^4$};
+
+\node (key) at (\outputx,\midy) {$\{0,1\}$};
+
+\node [xor gate] at (\xorx,6.5*\inputygap) (xor1) {eq};
+\node [xor gate] at (\xorx,4.5*\inputygap) (xor2) {eq};
+\node [xor gate] at (\xorx,2.5*\inputygap) (xor3) {eq};
+\node [xor gate] at (\xorx,.5*\inputygap) (xor4) {eq};
+\node [and gate, inputs=nnnn] at (\thresholdx,\midy) (threshold1) {threshold};
+
+\draw (c1) -- (xor1.input 1);
+\draw (s1) -- (xor1.input 2);
+\draw (c2) -- (xor2.input 1);
+\draw (s2) -- (xor2.input 2);
+\draw (c3) -- (xor3.input 1);
+\draw (s3) -- (xor3.input 2);
+\draw (c4) -- (xor4.input 1);
+\draw (s4) -- (xor4.input 2);
+
+\draw (xor1.output) -- (threshold1.input 1);
+\draw (xor2.output) -- (threshold1.input 2);
+\draw (xor3.output) -- (threshold1.input 3);
+\draw (xor4.output) -- (threshold1.input 4);
+
+\draw (threshold1.output) -- (key);
+
+\end{tikzpicture}
+\end{center}\vspace*{-2em}
+\caption{The $\func$ circuit}
+\label{fig:fakecircuit}
+\end{figure}

@@ -1,0 +1,131 @@
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+In this section, we give a brief comparison of our \FAKE protocols.
+First, in Figure~\ref{fig:comparison}, we describe the assumptions necessary for the two constructions, and the security parameters that they can achieve.
+
+% \pad[inline]{I don't think the "Minimum Distance for Security $\gamma$" title is very easy to grasp. I would say "Minimum security gap $\gamma - \delta$", and adjust the values accordingly}
+
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+
+\begin{figure}[h!]
+\centering
+\begin{tabular}{|l||P{6cm}|P{2cm}|P{2cm}|}
+\hline
+& Assumptions & Threshold $\delta$ & Gap $\gamma-\delta$ \\ \hline \hline
+$\PfakeRSS$ & UC-secure $\liPAKE$ & $<\pwlen/2$ & $\delta$ \\ \hline
+$\PfakeYGC$ & (1) UC-secure OT (2) projective, output-projective and garbled-output random secure garbling scheme & Any & None \\ \hline
+\end{tabular}
+\caption{Assumptions, Distance Thresholds and Functionality/Security Gaps achieved by the two schemes.
+$\PfakeRSS$ is the construction in Figure~\ref{fig:FAKERSS}.
+$\PfakeYGC$ is the construction in Figure~\ref{fig:YGCRFE} with the split functionality transformation of Barak~\etal~\cite{C:BCLPR05}.}
+\label{fig:comparison}
+\end{figure}
+
+Then, in Figure~\ref{fig:concretecomparison}, we describe the efficiency of the constructions when concrete primitives (OT / $\liPAKE$) are used to instantiate them.
+$\PfakeRSS$ is instantiated as the construction in Figure~\ref{fig:FAKERSS} with the \liPAKE in Figure~\ref{fig:EKE2} and an \RSS.
+% \pad{Since we do not break down the Shares and Reconstruct operations in the table, we should not detail more our choice of RSS.}
+$\PfakeYGC$ is instantiated as the construction in Figure~\ref{fig:YGCRFE} with the UC-secure oblivious transfer protocol of Chou and Orlandi~\cite{LC:ChoOrl15}\iftoggle{full}{ described in Figure~\ref{fig:concreteOT}}{}, with the garbling scheme of Bal~\etal~\cite{CCS:BalMalRos16}, and with the split functionality transformation of Barak~\etal~\cite{C:BCLPR05}.
+Though $\PfakeYGC$ can handle any efficiently computable notion of distance, Figure~\ref{fig:concretecomparison} assumes that both constructions use Hamming distance (and that, specifically, $\PfakeYGC$ uses the circuit described in Figure~\ref{fig:fakecircuit}).
+We describe efficiency in terms of sub-operations (per-party, not in aggregate).
+
+Note that these concrete primitives each have their own set of required assumptions.
+Specifically, the \liPAKE in Figure~\ref{fig:EKE2} requires a random oracle (RO\iftoggle{full}{, described in Figure~\ref{functionality:RO}}{}), ideal cipher (IC\iftoggle{full}{, described in Figure~\ref{functionality:IC}}{}) and common reference string (CRS\iftoggle{full}{, described in Figure~\ref{functionality:CRS}}{}). 
+The oblivious transfer protocol \iftoggle{full}{in Figure~\ref{fig:concreteOT}}{of Chou and Orlandi~\cite{LC:ChoOrl15}} requires a random oracle.
+The garbling scheme of Bal~\etal~\cite{CCS:BalMalRos16} requires a mixed modulus circular correlation robust hash function, which is a weakening of the random oracle assumption.
+
+For $\PfakeRSS$, the factor of $\pwlen$ arises from the $\pwlen$ times EKE2 is executed. 
+For $\PfakeYGC$, the factor of $\pwlen$ comes from the garbled circuit.
+Additionally, in $\PfakeYGC$, three communication flows come from OT.
+The last of these is combined with sending the garbled circuits.
+%one is required to send the garbled circuits, and 
+Two additional flows of communication come from the split functionality transformation.
+The need for signatures also arises from the split functionality transformation.
+
+\newcolumntype{R}[2]{
+    >{\adjustbox{angle=#1,lap=\width-(#2)}\bgroup}
+    l
+    <{\egroup}
+}
+\newcommand*\rotsixty{\multicolumn{1}{|R{60}{0em}|}}
+\newcommand*\rotseventyfive{\multicolumn{1}{|R{75}{0em}|}}
+\newcommand*\roteighty{\multicolumn{1}{|R{80}{0em}|}}
+\newcommand*\rotninety{\multicolumn{1}{|R{90}{0em}|}}
+
+\begin{figure}[h!]
+\centering
+\begin{tabular}{|l|l||p{1cm}|p{1.3cm}|c|c|p{.6cm}|p{.6cm}|p{.6cm}|p{.6cm}|p{.6cm}|p{.6cm}|p{.6cm}|}
+\hline
+& & 
+\roteighty{Output Key Format} & 
+\roteighty{$\#$ \begin{minipage}[t]{2.5cm}(Bidirectional) Communication Flows\end{minipage}} &
+\roteighty{$\#$ Exponentiations} &
+\roteighty{$\#$ Hashes} &
+\roteighty{$\#$ Encryptions} &
+\roteighty{$\#$ Decryptions} &
+\roteighty{$\#$ Share} &
+\roteighty{$\#$ Reconstruct} &
+\roteighty{$\#$ SigKeyGens} &
+\roteighty{$\#$ Signs} &
+\roteighty{$\#$ SigVerifies} 
+\\ \hline \hline
+\multirow{2}{*}{$\PfakeRSS$} & sender & \multirow{2}{*}{$\F_q$} & \multirow{2}{*}{$2$} & \multirow{2}{*}{$2\pwlen$} & \multirow{2}{*}{$\pwlen$} & \multirow{2}{*}{$\pwlen$} & \multirow{2}{*}{$\pwlen$} & $1$ & $0$ & $1$ & $1$ & $0$ \\  \hhline{~-~~~~~~-----}
+& receiver & & & & & & & $0$ & $1$ & $0$ & $0$ & $1$ \\  \hline
+\multicolumn{2}{|c||}{$\PfakeYGC$} & $\{0,1\}^{\secparam}$ & 5 & $3\pwlen + 2$ & $4\pwlen + 7$ & $2\pwlen$ & $\pwlen$ & $-$ & $-$ & $1$ & $5$ & $5$ \\ \hline
+\end{tabular}
+\caption{Efficiency (in Terms of Sub-Operations) of the Two Constructions.
+Here, by ``bidirectional communication flow'' we mean two flows, one in each direction, which do not depend on one another.
+$\PfakeRSS$ is the construction in Figure~\ref{fig:FAKERSS} instantiated with the \liPAKE in Figure~\ref{fig:EKE2}. 
+The first $\PfakeRSS$ row describes the sender's efficiency; the second row describes the receiver's efficiency.
+$\PfakeYGC$ is the construction in Figure~\ref{fig:YGCRFE} instantiated with the UC-secure oblivious transfer protocol of Chou and Orlandi~\cite{LC:ChoOrl15}\iftoggle{full}{ described in Figure~\ref{fig:concreteOT}}{}, the garbling scheme of Bal~\etal~\cite{CCS:BalMalRos16}, and with the split functionality transformation of Barak~\etal~\cite{C:BCLPR05}.
+$\PfakeYGC$ is described in a single row, since it is a symmetric protocol.}
+\label{fig:concretecomparison}
+\end{figure}
+
+\expl{In the YGC column of the table...
+The $3\pwlen + 2$ exponentiations come from OT.
+$3\pwlen$ hashes come from OT, $\pwlen$ hashes come from garbling, and $1$ hash comes from evaluating.
+One more hash comes from the final key derivation step.
+In the split functionality framework, $5$ more hashes come from using the hash-and-sign paradigm.
+$2\pwlen$ symmetric encryptions come from OT.
+%Another $\pwlen$ symmetric encryptions come from garbling.
+$\pwlen$ symmetric decryptions come from OT.
+%Another symmetric decryption come from evaluating.
+3 communication flows come from OT (the last round of which can be combined with circuit transmission).
+2 communication flows come from the split functionality transformation.
+
+In the \WRSS column: everything from EKE2 is taken times $\pwlen$ executions. So EKE2 leads to $2\pwlen$ exp, $\pwlen$ hashes, encryptions and decryptions. 
+The rest of the protocol is one of each of the following: Reconstruct, Share, Sign, Vfy. Also $2$ group operations.
+}
+
+\paragraph{Efficiency Optimizations to $\PfakeYGC$}
+
+We can make several small efficiency improvements to the $\PfakeYGC$ construction which are not reflected in Figure~\ref{fig:concretecomparison}.
+%(They are not reflected in Figure~\ref{fig:concretecomparison}, because they are not a part of the scheme the security of which we prove.)
+%First, the last flow of the OT protocol can be combined with the sending of the garbled circuits, reducing the number of bidirectional communication flows from $6$ to $5$.
+First, instead of using the split functionality transformation of Barak~\etal~\cite{C:BCLPR05}, we can use the split split functionality of Camenisch~\etal~\cite{C:CCGS10}.
+It uses a split key exchange functionality to establish symmetric keys, and then uses those to symmetrically encrypt and authenticate each flow.
+While this does not save any communication rounds, it does reduce the number of public key operations needed.
+%Finally, 
+Second, if the \passwords are more than $\secparam$ bits long (where $\secparam$ is the security parameter), OT extensions that are secure against malicious adversaries~\cite{EC:AHMR15} can be used.
+If the \passwords are fewer than $\secparam$ bits long, then nothing is to be gained from using OT extensions, since OT extensions require $\secparam$ ``base OTs''. 
+However, if the \passwords are longer --- say, if they are some biometric measurement that is thousands of bits long --- then OT extensions would save on the number of public key operations, at the cost of an extra round of communication. 
+
+\sophia[inline]{Leo wants to incorporate OT extensions into the table.}
+\sophia[inline]{Is it possible to leverage OT extensions from \fPAKE session to session?}
+
+%\begin{figure}[h!]
+%\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+%\hline
+%Construction & Exponentiate & Hash & Encrypt & Decrypt & Encode & Decode & SigKeyGen & Sign & Verify \\ \hline \hline
+%$\FAKE_2$ & $3\pwlen$ & $\pwlen$ & $\pwlen$ & $\pwlen$ & $2$ & $1$ & $1$ & $1$ & $1$ \\ \hline
+%YGC with split functionality & $3\pwlen + 2$ & $4\pwlen + 7$ & $2\pwlen$ & $\pwlen$ & $-$ & $-$ & $1$ & $5$ & $5$ \\ \hline
+%\end{tabular}
+%
+%\begin{tabular}{|c|c|c|c|c|}
+%\hline
+%Construction & Assumptions & Rounds of Communication & Gap & $\delta$ \\ \hline \hline
+%$\FAKE_2$ & RO, IC, CRS & $2$ & ? & ? \\ \hline
+%YGC with split functionality & UC OT, MMCCR hash function & $6$ & None & Any \\ \hline
+%\end{tabular}
+%\label{fig:comparison}
+%\end{figure}

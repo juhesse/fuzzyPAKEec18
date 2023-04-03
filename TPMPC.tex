@@ -1,0 +1,130 @@
+% !TEX spellcheck = en_US
+
+%
+% Paper latex template
+%
+%
+% Parameters
+%
+\RequirePackage{etoolbox}
+\newtoggle{full}          % false = conference version; true = full version
+\newtoggle{showoverflow}  % true  = show overflows
+\newtoggle{allowtodo}     % false = remove todo command
+\newtoggle{allowexpl}     % false = remove explanations
+\newtoggle{anonymous}     % true  = anonymous
+\newtoggle{submission}    % true  = submission (force llncs style for crypto)
+\newtoggle{llncs}
+
+\providetoggle{forcefull} % true = force full version from outside (see paper-full.tex)
+\providetoggle{forceconf} % true = force conf version from outside (see paper-conf.tex)
+\iftoggle{forcefull}{\toggletrue{full}}{\iftoggle{forceconf}{\togglefalse{full}}{
+    \toggletrue{full}     % default value for full
+  }}
+ 
+\toggletrue{submission}
+%\toggletrue{showoverflow} % default value for showoverflow
+\toggletrue{allowtodo}    % default value for allowtodo
+\toggletrue{allowexpl}    % default value for allowexpl
+\togglefalse{anonymous}    % default value for anonymous
+\toggletrue{full}
+
+%\togglefalse{allowtodo}
+%\togglefalse{allowexpl}
+
+\ifboolexpr{togl{full} and (not togl{submission})}{
+  \togglefalse{llncs}
+}{
+  \toggletrue{llncs}
+}
+
+%
+% Document class
+%
+\iftoggle{llncs}{
+  \documentclass[envcountsame,runningheads]{llncs}
+  \usepackage{fullpage}
+}{
+  \documentclass[11pt,envcountsame,runningheads]{llncs+}
+  \ifboolexpr{not (togl{allowtodo})}{
+   %\usepackage[a4paper, hmargin=2cm, vmargin=2cm, marginparwidth=1.8cm]{geometry}
+   \usepackage[a4paper]{geometry}
+  }{
+    %\usepackage[a4paper, left=0.8cm, right=3.2cm, vmargin=2cm, marginparwidth=2.8cm]{geometry}
+    \usepackage[a4paper]{geometry}
+  }
+}
+\pagestyle{plain}
+\makeatletter
+%\def\tableofcontents{\def\authcount##1{\setcounter{auco}{##1}\setcounter{@auth}{1}}\@starttoc{toc}}
+\makeatother
+
+%
+% Custom header
+%
+
+\input{tex_files/ZZ_header}
+
+%
+% Title and other informations
+%
+
+\begin{document}
+
+\title{A Novel Approach to Dual Execution for Yao's Garbled Circuits with Applications to Fuzzy Password-Authenticated Key Exchange}
+\titlerunning{A Novel Approach to Dual Execution for Yao's Garbled Circuits}
+
+\iftoggle{anonymous}{
+  \author{}
+  \institute{}
+  \date{\today}
+}{
+  \author{Pierre-Alain Dupont \inst{1,2,3} \and Julia Hesse \inst{4,6} \and David Pointcheval \inst{2,3} \and Leonid Reyzin \inst{5} \and Sophia Yakoubov \inst{5}}
+  \institute{DGA \and DIENS, \'{E}cole Normale Sup\'{e}rieure, CNRS, PSL Research University, Paris, France
+  \and INRIA \and Technische Universität Darmstadt \and Boston University \and Work done while at \'{E}cole Normale Sup\'{e}rieure }
+  \date{\today}
+}
+
+\maketitle
+
+Yao's garbled circuits provide an efficient way to evaluate two-party functionalities.
+The two parties executing the circuit are called ``garbler'' and  ``evaluator.'' 
+Yao's garbled circuits guarantee security against a fully malicious evaluator but only against a semi-honest garbler. 
+
+In order to obtain security against a malicious garbler, one usually applies the cut-and-choose technique~\cite{TCC:LinPin11}, which is quite costly: to achieve an error probability of $2^{-\secparam}$, the cost of the protocol increases by a factor of $\secparam$.
+%the number of circuits that need to be garbled increases by a factor of $\secparam$, and the number of oblivious transfers that need to be performed increases by a factor of $\secparam / 2$. 
+Other transformations such as LEGO~\cite{TCC:NieOrl09} and authenticated garbling~\cite{CCS:WanRanKat17a} exist as well, but though these improve the data-dependent online costs, they rely on expensive pre-processing.
+We show a more efficient transformation that increases security for Yao's garbled circuits, and apply to it to the problem of fuzzy password-authenticated key exchange.
+
+Mohassel~\etal~\cite{PKC:MohFra06b} and Huang~\etal~\cite{SP:HuaKatEva12} suggest an efficient transformation known as ``dual execution'':
+each party plays each role (garbler and evaluator) once, and then the two perform a comparison step on their outputs in a secure fashion. 
+Dual execution incurs only a factor of $2$ overhead over semi-honest garbled circuits. 
+However, it does not achieve fully malicious security. 
+It guarantees correctness, but reduces the privacy guarantee by allowing
+a malicious garbler to learn one bit of information of her choice. 
+Specifically, if a malicious garbler garbles a wrong circuit, she can use the comparison step to learn one bit about the output of this wrong circuit on the other party's input.
+This one extra bit of information could be crucially important, violating the privacy of the evaluator's input in a significant way, especially if the input is used in more than one computation.
+
+We introduce a tradeoff between correctness and privacy for boolean functions. 
+For one of the two possible outputs (without loss of generality, `0'), we restore full privacy at the cost of correctness.
+The new privacy guarantee is that if the correct output is `0', then  a malicious adversary cannot learn anything beyond this output, but if the correct output is `1', then she can learn a single bit of her choice. 
+The new correctness guarantee is that a malicious adversary can cause the computation  that should output `1' to output `0' instead, but not the other way around.
+
+For those familiar with Yao's Garbled Circuits, the main idea of dual execution is to have the two parties independently evaluate one another's circuits, learn the output values, and compare the output labels using a secure comparison protocol.
+We, on the other hand, do not reveal the output values to the parties before the comparison.
+Instead, the parties compare output labels \emph{assuming} an output of `1', and if the comparison fails, the output is determined to be `0'. 
+
+This approach is particularly useful for key establishment using the parties' inputs for mutual authentication --- for example, from biometric information or ambient noise.
+We show that the two parties can compare their inputs using our protocol, and then use some of the protocol data (specifically, an XOR of the output labels) as the key.
+Using the generic transformation of Barak~\etal~\cite{C:BCLPR05} to adapt this to unauthenticated channels, we get a fuzzy password-authenticated key exchange.
+
+Our privacy--correctness tradeoff is perfect for this setting.
+If authentication succeeds, then the parties' inputs are similar, and learning a bit of information about each other's inputs is not problematic.
+If authentication fails, however, we are guaranteed to have no leakage at all. 
+We pay for the lack of leakage by allowing a malicious party to force an authentication failure even when authentication should succeed.
+However, either party can do so anyway by providing an incorrect input.
+
+\bibliographystyle{alpha}
+\bibliography{cryptobib/abbrev3,cryptobib/crypto,bib/add,bib/sophia,bib/leo}
+
+
+\end{document}

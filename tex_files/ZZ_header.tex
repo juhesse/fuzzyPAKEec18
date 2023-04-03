@@ -1,0 +1,587 @@
+% !TeX root = ../main.tex
+% !TEX root = ../main.tex
+% !TEX spellcheck = en-US
+
+%
+% Packages
+%
+
+% Standard packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabu}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{xargs}
+\usepackage{multirow,bigdelim} %bigdelim added by julia, supplements multirow by supporting brackets over multiple rows
+\usepackage{hhline} % for YGC comparison table
+\usepackage{verbatimbox} % for crypto games
+\usepackage{multirow} % for crypto games
+\usepackage{scalerel} % for crypto games
+\usepackage{tikz} % for FAKE circuit description
+\usetikzlibrary{circuits.logic.US} % for FAKE circuit description
+\newtheorem{observation}{Observation}
+\usepackage{adjustbox} % for table column header rotation
+\usepackage{array} % for table column header rotation
+
+\setcounter{secnumdepth}{3} % to make subsubsections have numbers
+
+\usepackage[textsize=small]{todonotes}
+\iftoggle{allowtodo}{
+  % add xspace to todo command (http://tex.stackexchange.com/a/68741)
+  \makeatletter
+  \expandafter\apptocmd\csname\string\todo\endcsname{\xspace}{}{}
+  \makeatother
+  
+  \newcommandx{\pad}[2][1=]{\todo[linecolor=cyan, backgroundcolor=cyan!25, bordercolor=cyan,#1]{Pierre-Alain: #2}}
+  \newcommandx{\julia}[2][1=]{\todo[linecolor=blue, backgroundcolor=blue!25, bordercolor=blue,#1]{Julia: #2}}
+  \newcommandx{\david}[2][1=]{\todo[linecolor=red, backgroundcolor=red!25, bordercolor=red,#1]{David: #2}}
+  \newcommandx{\sophia}[2][1=]{\todo[linecolor=green, backgroundcolor=green!25, bordercolor=green,#1]{Sophia: #2}}
+  \newcommandx{\leo}[2][1=]{\todo[linecolor=yellow, backgroundcolor=yellow!25, bordercolor=yellow,#1]{Leo: #2}}  
+}
+{
+  \newcommandx{\pad}[2][1=]{}
+  \newcommandx{\julia}[2][1=]{}
+  \newcommandx{\david}[2][1=]{}
+  \newcommandx{\sophia}[2][1=]{}
+  \newcommandx{\leo}[2][1=]{} 
+}
+
+\iftoggle{allowexpl}{
+  \newcommand{\expl}[1]{\todo[inline,linecolor=red, backgroundcolor=orange!25, bordercolor=red]{Comment: #1}}
+}
+{
+ \newcommand{\expl}[1]{}
+}
+
+% Personal packages
+\usepackage{games}
+
+% Hyperref
+\usepackage[pdfpagelabels=true]{hyperref}
+\hypersetup{
+%  linktoc = page,
+  pdfpagemode = UseNone,
+  colorlinks,
+  linkcolor={red!50!black},
+  citecolor={blue!50!black},
+  urlcolor={blue!80!black}
+}
+
+%\iftoggle{full}{
+%  \renewcommand*{\backref}[1]{}
+%  \renewcommand*{\backrefalt}[4]{
+%    \ifcase #1
+%    (Not cited.)
+%    \or
+%    (Page~#2.)
+%    \else
+%    (Pages~#2.)
+%    \fi
+%  }
+%  \renewcommand*{\backrefsep}{, }
+%  \renewcommand*{\backreftwosep}{ and~}
+%  \renewcommand*{\backreflastsep}{, and~}
+%}{}
+
+\makeatletter
+\AtBeginDocument{
+  \hypersetup{
+    pdftitle = {\@title},
+    pdfauthor = {\@author}
+  }
+}
+\makeatother
+
+% cleveref
+\usepackage[capitalize]{cleveref}
+
+% Nice headings
+\newcommand{\heading}[1]{{\vspace{6pt}\noindent\sc{#1.}}}
+% \newcommand{\heading}[1]{\paragraph{\sc #1.}}
+%
+% Misc
+% %
+
+\iftoggle{showoverflow}{
+  \overfullrule=10pt
+}{}
+\newcommand{\alert}[1]{\textcolor{red}{#1}}
+%
+% Figures & Captions
+%
+
+\newcommand*{\repeatcaption}[2]{
+  \renewcommand{\thefigure}{\ref{#1}}
+  \caption{#2 (reminder)}
+}
+
+%
+% References
+%
+
+\iftoggle{full}{
+  \newcommand*{\appref}[1]{Appendix~\ref{#1}}
+}{
+  \newcommand*{\appref}[1]{the full version of this paper~\cite{cryptoeprint:2017:1111}}
+}
+
+\newcommand{\passstring}{pass-string}
+\newcommand{\Passstring}{Pass-string}
+
+%
+% Games
+%
+\newcounter{game}
+\def\newGames{\setcounter{game}{0}}
+\def\newGame#1{\xdef\prevGame{\arabic{game}}\addtocounter{game}{1}%
+  \expandafter\xdef\csname game#1\endcsname{\arabic{game}}}
+\def\thisGame{\arabic{game}}
+\def\refGame#1{\csname game#1\endcsname}
+\renewcommand{\Game}[1][]{\if!#1!\textrm{Game}\xspace\else\textrm{Game \ensuremath{#1}}\fi}
+\newcommand{\Games}[1][]{\if!#1!\textrm{Games}\xspace\else\textrm{Games \ensuremath{#1}}\fi}
+% usage: 
+% \newGame{name} -- inits new Game called name
+% \refGame{name} -- Number of Game called name
+% \thisGame -- Number of current Game
+% \prevGame -- Number of previous Game
+
+
+%
+% General and Math commands
+%
+
+% Abbreviations
+\newcommand{\etal}{\emph{et al.}\xspace}
+
+% Math sets and groups
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\G}{\mathbb{G}}
+
+% Math misc
+\makeatletter
+\newcommand\suchthat{%
+ \@ifstar
+  {\mathrel{}\middle|\mathrel{}}
+  {\mid}%
+}
+\makeatother
+
+\newcommand{\cind}{\ensuremath{\stackrel{c}{\approx}\xspace}}
+\newcommand{\defeq}{\coloneqq}
+\newcommand{\eqdef}{\eqqcolon}
+\newcommand{\eeq}{\overset{{}_{?}}{=}}
+
+%tikz stuff
+\usepackage{tikz}
+\usetikzlibrary{shapes.misc,shapes}
+\usetikzlibrary{positioning}
+\usetikzlibrary{calc}
+\usetikzlibrary{arrows}
+\usetikzlibrary{decorations.markings}
+\def\shortbib{1}
+
+%
+% General Crypto commands
+%
+
+% Algorithms
+\newcommand{\getsr}{\stackrel{{}_\$}{\leftarrow}}
+
+% Experiments / Game
+\newcommand{\Ax}{\mathcal{A}}
+\newcommand{\Bx}{\mathcal{B}}
+\newcommand{\Dx}{\mathcal{D}}
+\newcommand{\Ex}{\mathcal{E}}
+\newcommand{\Fx}{\mathcal{F}}
+\newcommand{\Sx}{\mathcal{S}}
+\newcommand{\Ux}{\mathcal{U}}
+\newcommand{\pw}{\mathsf{pw}}
+\newcommand{\sid}{\mathsf{sid}}
+%\newcommand{\key}{\mathsf{key}}
+\newcommand{\state}{\mathsf{state}}
+\newcommand{\accept}{\mathsf{accept}}
+\newcommand{\reject}{\mathsf{reject}}
+\newcommand{\terminate}{\mathsf{terminate}}
+
+\newcommand{\Exp}{\mathsf{Exp}}
+
+\newcommand{\secu}{\web{sec}}
+\newcommand{\SECU}{\web{SEC}}
+
+\newsavebox{\fboxenvbox}
+\newenvironment{fboxenv}
+    {\begin{lrbox}{\fboxenvbox}}
+    {\end{lrbox}\fbox{\usebox{\fboxenvbox}}}
+    
+% Protocol flows
+\newcommand*{\Rflow}[2][10em]{\ensuremath{\xrightarrow{\smash{\makebox[#1][c]{$#2$}}}}}
+\newcommand*{\Lflow}[2][10em]{\ensuremath{\xleftarrow{\smash{\makebox[#1][c]{$#2$}}}}}
+\newcommand*{\LRflow}[3][10em]{\ensuremath{\xleftrightarrow[\smash{\makebox{$#2$}}]{\smash{\makebox[#1][c]{$#3$}}}}}
+\newcommand*{\LRsbflow}[3][10em]{\ensuremath{\xleftrightharpoons[\smash{\makebox{$#2$}}]{\smash{\makebox[#1][c]{$#3$}}}}}
+\newcommand*{\LRsflow}[3][4em]{\ensuremath{\xleftrightharpoons[\smash{\makebox{$#2$}}]{\smash{\makebox[#1][c]{$#3$}}}}}
+\newcommand*{\Rsflow}[2][4em]{\ensuremath{\xrightarrow{\smash{\makebox[#1][c]{$#2$}}}}}
+\newcommand*{\Rsmallflow}[2][2em]{\ensuremath{\xrightarrow{\smash{\makebox[#1][c]{$#2$}}}}}
+\newcommand*{\Lsflow}[2][4em]{\ensuremath{\xleftarrow{\smash{\makebox[#1][c]{$#2$}}}}}
+
+% Crypto misc
+
+\newcommand{\eps}{\varepsilon}
+\DeclareMathOperator{\negl}{\mathsf{negl}}
+
+% Hard problems (uppercase) and associated experiment names (lowercase)
+\newcommand{\hardprobfont}[1]{\texorpdfstring{\ensuremath{\textsf{#1}}}{#1}}
+\newcommand{\DL}{\hardprobfont{DL}\xspace}
+\newcommand{\dl}{\hardprobfont{dl}\xspace}
+\newcommand{\DHtup}{\hardprobfont{DH}\xspace}    % DH tuple
+\newcommand{\DDH}{\hardprobfont{DDH}\xspace}
+\newcommand{\ddh}{\hardprobfont{ddh}\xspace}
+\newcommand{\MDDH}{\hardprobfont{MDDH}\xspace}
+\newcommand{\mddh}{\hardprobfont{mddh}\xspace}
+\newcommand{\DLin}{\hardprobfont{DLin}\xspace}
+\newcommand{\dlin}{\hardprobfont{dlin}\xspace}
+\newcommand{\XDH}{\hardprobfont{XDH}\xspace}
+\newcommand{\xdh}{\hardprobfont{xdh}\xspace}
+\newcommand{\CDH}{\hardprobfont{CDH}\xspace}
+\newcommand{\cdh}{\hardprobfont{cdh}\xspace}
+\newcommand{\SXDH}{\hardprobfont{SXDH}\xspace}
+\newcommand{\sxdh}{\hardprobfont{sxdh}\xspace}
+\newcommand{\BDDH}{\hardprobfont{BDDH}\xspace}
+\newcommand{\bddh}{\hardprobfont{bddh}\xspace}
+\newcommand{\BDDHI}{\hardprobfont{BDDHI}\xspace}
+\newcommand{\bddhi}{\hardprobfont{bddhi}\xspace}
+\newcommand{\klin}{\texorpdfstring{\kappa}{k}}
+\newcommand*{\Lin}[1]{\texorpdfstring{\ensuremath{{#1\text{-}\textsf{Lin}}}}{#1-Lin}\xspace}
+\newcommand*{\lin}[1]{\texorpdfstring{\ensuremath{{#1\text{-}\textsf{lin}}}}{#1-lin}\xspace}
+\newcommand{\coll}{\hardprobfont{coll}\xspace}
+
+%
+% Commands specific to the paper 
+%
+
+\newcommand{\web}[1]{\texttt{#1}}
+
+% bits
+\newcommand{\bits}{\{0,1\}}
+\newcommand{\bitsn}{\{0,1\}^{n}}
+
+% Notions
+\newcommand{\notionfont}[1]{\texorpdfstring{\ensuremath{\textsf{#1}}}{#1}}
+\newcommand{\WRSS}{\notionfont{WRSS}\xspace}
+\newcommand{\RSS}{\notionfont{RSS}\xspace}
+\newcommand{\UC}{\textsf{UC}\xspace}
+\newcommand{\AKE}{\textsf{AKE}\xspace}
+\newcommand{\PAKE}{\textsf{PAKE}\xspace}
+\newcommand{\iPAKE}{\textsf{iPAKE}\xspace}
+\newcommand{\liPAKE}{\ensuremath{\ell}\textsf{-iPAKE}\xspace}
+\newcommand{\FAKE}{\textsf{fPAKE}\xspace}
+\newcommand{\FFAKE}{\Fx_\FAKE\xspace}
+\newcommand{\FiPAKE}{\Fx_\iPAKE\xspace}
+\newcommand{\FliPAKE}{\ensuremath{\Fx_{\ell\notionfont{-iPAKE}}\xspace}}
+\newcommand{\Lpw}{\ensuremath{\Lambda_{\mathcal{P}}}}
+\newcommand{\Ll}{\ensuremath{\Lambda_{\mathcal{L}}}}
+\newcommand{\FpwKE}{\Fx_\notionfont{pwKE}\xspace}
+\newcommand{\Fcrs}{\ensuremath{\Fx_\notionfont{CRS}}\xspace}
+\newcommand{\Fic}{\ensuremath{\Fx_\notionfont{IC}}\xspace}
+\newcommand{\Fro}{\ensuremath{\Fx_\notionfont{RO}}\xspace}
+\newcommand{\Fot}{\ensuremath{\Fx_\notionfont{OT}}\xspace}
+\newcommand{\Fsot}{\ensuremath{s\Fx_\notionfont{OT}}\xspace}
+\newcommand{\Frfe}{\ensuremath{\Fx_\notionfont{RFE}}\xspace}
+\newcommand{\Fsrfe}{\ensuremath{s\Fx_\notionfont{RFE}}\xspace}
+\newcommand{\Prfe}{\ensuremath{\Pi_\notionfont{RFE}}\xspace}
+\newcommand{\PfakeYGC}{\ensuremath{\FAKE_\notionfont{YGC}}\xspace}
+\newcommand{\PfakeRSS}{\ensuremath{\FAKE_\RSS}\xspace}
+
+\newcommand{\ind}{{\mathsf{ind}}}
+
+\newcommand{\INDCPA}{\texttt{IND-CPA}\xspace}
+\newcommand{\indcpa}{\mathsf{ind-cpa}}
+\newcommand{\INDCCA}{\texttt{IND-CCA}\xspace}
+\newcommand{\indcca}{\mathsf{ind-cca}}
+\newcommand{\CPA}{\texttt{CPA}\xspace}
+\newcommand{\CCA}{\texttt{CCA}\xspace}
+\newcommand{\IND}{\texttt{IND}\xspace}
+\newcommand{\INTCTXT}{\texttt{INT-CTXT}\xspace}
+\newcommand{\intctxt}{\mathsf{int-ctxt}\xspace}
+\newcommand{\authenc}{\mathsf{authenc}\xspace}
+
+% Signature scheme
+\newcommand{\SigGen}{\mathsf{SigGen}\xspace}
+\newcommand{\Sign}{\mathsf{Sign}\xspace}
+\newcommand{\Vfy}{\mathsf{Vfy}\xspace}
+
+% Secret sharing
+\newcommand{\Share}{\ensuremath{\mathsf{Share}}\xspace}
+\newcommand{\Reconstruct}{\ensuremath{\mathsf{Reconstruct}}\xspace}
+\newcommand{\tc}{\ensuremath{\tilde{c}}}
+\newcommand{\bA}{\ensuremath{\bar{A}}}
+
+
+% SPHF
+\newcommand{\HashKG}{\ensuremath{\mathsf{HashKG}}\xspace}
+\newcommand{\ProjKG}{\ensuremath{\mathsf{ProjKG}}\xspace}
+\newcommand{\Hash}{\ensuremath{\mathsf{Hash}}\xspace}
+\newcommand{\ProjHash}{\ensuremath{\mathsf{ProjHash}}\xspace}
+
+\newcommand{\hk}{\mathsf{hk}}
+\newcommand{\hp}{\mathsf{hp}}
+
+% Security / games
+\newcommand{\Env}{\ensuremath{\mathcal{Z}}\xspace}
+\newcommand{\AdvA}{\ensuremath{\mathcal{A}}\xspace}
+\newcommand{\AdvB}{\ensuremath{\mathcal{B}}\xspace}
+\newcommand{\BCDH}{\ensuremath{\AdvB_{\CDH}}\xspace}
+\newcommand{\Sim}{\ensuremath{\mathcal{S}}\xspace}
+\newcommand{\Func}{\ensuremath{\mathcal{F}}\xspace}
+
+\newcommand{\Adv}{\mathsf{Adv}}
+\newcommand{\Succ}{\mathsf{Succ}}
+
+\newcommand*{\procfont}[1]{\ensuremath{\textbf{#1}}}
+\newcommand{\Initialize}{{\procfont{Initialize}}}
+\newcommand{\Finalize}{{\procfont{Finalize}}}
+
+\newcommand{\real}{\mathtt{real}}
+\newcommand{\ideal}{\mathtt{ideal}}
+\newcommand{\Init}{\texttt{Init}\xspace}
+
+% CRS, ...
+\newcommand{\param}{\mathsf{param}}
+\newcommand{\crs}{\mathsf{crs}}
+
+% UC
+\newcommand{\NewSession}{\web{NewSession}\xspace}
+\newcommand{\TestPwd}{\web{TestPwd}\xspace}
+\newcommand{\NewKey}{\web{NewKey}\xspace}
+\newcommand{\ListIC}{\ensuremath{\Lambda_{IC}}\xspace}
+\newcommand{\ListRO}{\ensuremath{\Lambda_{RO}}\xspace}
+\newcommand{\ListCDH}{\ensuremath{\Lambda_{CDH}}\xspace}
+\newcommand{\ListOT}{\ensuremath{\Lambda_{OT}}\xspace}
+\newcommand{\role}{\web{role}\xspace}
+\newcommand{\rolereceiver}{\web{receiver}\xspace}
+\newcommand{\rolesender}{\web{sender}\xspace}
+\newcommand{\leakage}{\ensuremath{L}}
+\newcommand{\leakageclose}{\ensuremath{\leakage_{c}}}
+\newcommand{\leakagefar}{\ensuremath{\leakage_{f}}}
+\newcommand{\leakagemiddle}{\ensuremath{\leakage_{m}}}
+
+% BPR model
+\newcommand{\nbusers}{{n_u}}
+\newcommand{\Reveal}{\texttt{Reveal}\xspace}
+\newcommand{\Execute}{\texttt{Execute}\xspace}
+\newcommand{\Send}{\texttt{Send}\xspace}
+\newcommand{\Receive}{\texttt{Receive}\xspace}
+\newcommand{\Corrupt}{\texttt{Corrupt}\xspace}
+\newcommand{\Test}{\texttt{Test}\xspace}
+
+\newcommand{\fresh}{\mathsf{fresh}\xspace}
+\newcommand{\fsfresh}{\mathsf{fs\text{-}fresh}\xspace}
+\newcommand{\Win}{\mathsf{Win}\xspace}
+\newcommand{\Coll}{\mathsf{Coll}\xspace}
+
+\newcommand{\true}{\texttt{True}\xspace}
+\newcommand{\false}{\texttt{False}\xspace}
+
+\newcommand{\Extract}{\mathsf{Extract}\xspace}
+\newcommand{\Start}{\texttt{Start}\xspace}
+
+\newcommand{\Encode}{\mathsf{Encode}\xspace}
+\newcommand{\Decode}{\mathsf{Decode}\xspace}
+\newcommand{\Encrypt}{\mathcal{E}\xspace}
+\newcommand{\Decrypt}{\mathcal{D}\xspace}
+
+%Local paper
+\newcommand{\msk}[2]{\ensuremath{m(#1, #2)}}
+
+
+% table formatting:
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+% MISC:
+\newcommand{\xor}{\ensuremath{\oplus}}
+\newcommand{\yes}{\ensuremath{\checkmark}}
+\newcommand{\no}{}
+\newcommand{\booland}{\ensuremath{\wedge}}
+\newcommand{\boolor}{\ensuremath{\vee}}
+\newcommand{\algfont}[1]{\ensuremath{\mathsf{#1}}}
+%\newcommand{\negl}{\ensuremath{negl}}    % already present in main FAKE macros file
+\newcommand{\for}{\ensuremath{\mbox{ for }}}
+\newcommand{\secarg}[1]{{\color{red} #1}}
+
+% parties:
+\newcommand{\client}{\ensuremath{\mathcal{C}}}
+\newcommand{\server}{\ensuremath{\mathcal{S}}}
+\newcommand{\Party}{\ensuremath{\mathcal{P}}}
+\newcommand{\SimYGCRFE}{\ensuremath{\Sim_{\notionfont{RFE}}}}
+\newcommand{\SimYGCFAKE}{\ensuremath{\Sim_{\FAKE}}}
+\newcommand{\sender}{\ensuremath{\mathcal{S}}}
+\newcommand{\receiver}{\ensuremath{\mathcal{R}}}
+\newcommand{\oracle}{\ensuremath{\mathcal{O}}}
+
+% 0/1 party terminology:
+\newcommand{\firstindex}{\ensuremath{0}}
+\newcommand{\secondindex}{\ensuremath{1}}
+\newcommand{\firstparty}{\ensuremath{\Party_{\firstindex}}}
+\newcommand{\secondparty}{\ensuremath{\Party_{\secondindex}}}
+\newcommand{\firstpw}{\ensuremath{\pw_{\firstindex}}}
+\newcommand{\secondpw}{\ensuremath{\pw_{\secondindex}}}
+\newcommand{\firstkey}{\ensuremath{\key_{\firstindex}}}
+\newcommand{\secondkey}{\ensuremath{\key_{\secondindex}}}
+
+\newcommand{\aindex}{\ensuremath{i}}
+\newcommand{\otherindex}{\ensuremath{1-\aindex}}
+\newcommand{\aparty}{\ensuremath{\Party_{\aindex}}}
+\newcommand{\otherparty}{\ensuremath{\Party_{\otherindex}}}
+\newcommand{\apw}{\ensuremath{\pw_{\aindex}}}
+\newcommand{\otherpw}{\ensuremath{\pw_{\otherindex}}}
+\newcommand{\akey}{\ensuremath{\key_{\aindex}}}
+\newcommand{\otherkey}{\ensuremath{\key_{\otherindex}}}
+
+% digital objects:
+\newcommand{\bit}{\ensuremath{\mathsf{b}}}
+%\newcommand{\pw}{\ensuremath{\mathsf{pw}}}    % already present in main FAKE macros file
+\newcommand{\pwclient}{\ensuremath{\pw^{\client}}}
+\newcommand{\pwserver}{\ensuremath{\pw^{\server}}}
+\newcommand{\secretshare}{\ensuremath{\mathsf{s}}}
+\newcommand{\random}{\ensuremath{\mathsf{r}}}
+\newcommand{\randomclient}{\ensuremath{\random^{\client}}}
+\newcommand{\randomserver}{\ensuremath{\random^{\server}}}
+\newcommand{\transcript}{\ensuremath{\tau}}
+\newcommand{\hdist}{\ensuremath{d}}
+
+% encryption:
+\newcommand{\msg}{\ensuremath{\mathsf{msg}}}
+\newcommand{\ctext}{\ensuremath{\mathsf{ctext}}}
+\newcommand{\keygen}{\ensuremath{\mathsf{KeyGen}}}
+\newcommand{\enc}{\ensuremath{\mathsf{Enc}}}
+\newcommand{\dec}{\ensuremath{\mathsf{Dec}}}
+\newcommand{\key}{\ensuremath{\mathsf{k}}}
+\newcommand{\sk}{\ensuremath{\mathsf{sk}}}
+\newcommand{\pk}{\ensuremath{\mathsf{pk}}}
+\newcommand{\vk}{\ensuremath{\mathsf{vk}}}
+
+% sizes:
+\newcommand{\pwlen}{\ensuremath{n}} 
+\newcommand{\alphabetsize}{\ensuremath{p}} 
+\newcommand{\rank}{\ensuremath{k}} %rank of RSS/ECC, mostly k in the literature but this clashes with our key notation
+% \newcommand{\keylen}{\ensuremath{n}} %not used so far
+% \newcommand{\threshold}{\ensuremath{t}} %not used so far
+\newcommand{\secparam}{\ensuremath{\lambda}}
+\newcommand{\SEC}{\secparam}
+
+% security terms:
+\newcommand{\simulator}{\ensuremath{\mathcal{S}}}
+\newcommand{\advantage}{\ensuremath{\mathsf{Adv}}}
+\newcommand{\adversary}{\ensuremath{\mathcal{A}}}
+\newcommand{\challenger}{\ensuremath{\mathcal{C}}}
+%\newcommand{\game}{\ensuremath{\mathsf{Game}}}
+\newcommand{\priv}{\ensuremath{\mathsf{priv}}}
+\newcommand{\obliv}{\ensuremath{\mathsf{obliv}}}
+\newcommand{\oblivnotpriv}[1]{\framebox{#1}}
+\newcommand{\privnotobliv}[1]{\colorbox{gray}{#1}}
+
+% #1: secparam, #2: adversary, #3: gbscheme, #4: simulator:
+\newcommand{\oblivgame}[4]{\ensuremath{\mathsf{OblivSim}^{#2}_{#3, #4}(1^{#1})}} 
+\newcommand{\privgame}[4]{\ensuremath{\mathsf{PrivSim}^{#2}_{#3, #4}(1^{#1})}} 
+\newcommand{\authgame}[3]{\ensuremath{\mathsf{Aut}^{#2}_{#3}(1^{#1})}}
+\newcommand{\garbledoutputrandomnessgame}[3]{\ensuremath{\mathsf{GOutRand}^{#2}_{#3}(1^{#1})}}
+\newcommand{\inputindependencegame}[5]{\ensuremath{\mathsf{InpInd}^{#2}_{#3, #4, #5}(1^{#1})}}
+\newcommand{\strongobliviousnessgame}[6]{\ensuremath{\mathsf{SOblivSim}^{#2}_{#3, #4, #5, #6}(1^{#1})}}
+\newcommand{\stronggarbledoutputrandomnessgame}[5]{\ensuremath{\mathsf{SGOutRand}^{#2}_{#3, #4, #5}(1^{#1})}}
+
+\newcommand{\oblivadv}[4]{\ensuremath{\mathsf{OblivAdv}_{#3, #4}(1^{#1}, #2)}}
+\newcommand{\privadv}[4]{\ensuremath{\mathsf{PrivAdv}_{#3, #4}(1^{#1}, #2)}}
+\newcommand{\garbledoutputrandomnessadv}[3]{\ensuremath{\mathsf{GOutRandAdv}_{#3}(1^{#1}, #2)}}
+\newcommand{\inputindependenceadv}[5]{\ensuremath{\mathsf{InpIndAdv}_{#3, #4, #5}(1^{#1}, #2)}}
+\newcommand{\strongobliviousnessadv}[6]{\ensuremath{\mathsf{SOblivSimAdv}_{#3, #4, #5, #6}(1^{#1}, #2)}}
+\newcommand{\stronggarbledoutputrandomnessadv}[5]{\ensuremath{\mathsf{SGOutRandAdv}_{#3, #4, #5}(1^{#1}, #2)}}
+
+% garbled circuit components
+% toy generator / evaluator example:
+\newcommand{\generatorname}{Ginny\xspace}
+\newcommand{\generatorsymb}{\ensuremath{\mathsf{G}}}
+\newcommand{\generatorbit}{\ensuremath{g}}
+\newcommand{\evaluatorname}{Evan\xspace}
+\newcommand{\evaluatorsymb}{\ensuremath{\mathsf{E}}}
+\newcommand{\evaluatorbit}{\ensuremath{e}}
+% FUNCTION:
+\newcommand{\numinputs}{\ensuremath{n}}
+\newcommand{\numoutputs}{\ensuremath{m}}
+\newcommand{\numwires}{\ensuremath{q}}
+\newcommand{\numgates}{\ensuremath{p}}
+\newcommand{\inindices}{\ensuremath{\mathsf{inindices}}}
+\newcommand{\gateindices}{\ensuremath{\mathsf{gindices}}}
+\newcommand{\outindices}{\ensuremath{\mathsf{outindices}}}
+% WIRES:
+\newcommand{\wire}{\ensuremath{w}}
+\newcommand{\wirelabel}{\ensuremath{W}}
+\newcommand{\wireval}{\ensuremath{v}}
+\newcommand{\wireperm}{\ensuremath{p}}
+\newcommand{\wireinlabelsum}{\ensuremath{M}}
+% GATES:
+\newcommand{\gate}{\ensuremath{g}}
+\newcommand{\ggate}{\ensuremath{G}}
+\newcommand{\gates}{\ensuremath{\mathsf{gates}}}
+\newcommand{\outindex}{\ensuremath{\mathsf{outindex}}}
+\newcommand{\gateinindices}[1]{\ensuremath{\inindices_{#1}}}
+\newcommand{\gateoutindex}[1]{\ensuremath{\outindex_{#1}}}
+% OTHER:
+\newcommand{\wirelabellen}{\ensuremath{L}}
+\newcommand{\wirepermlen}{\ensuremath{P}}
+\newcommand{\wiretotallen}{\ensuremath{T}}
+\newcommand{\distance}{\ensuremath{R}}
+\newcommand{\modulus}{\ensuremath{m}}
+\newcommand{\permmodulus}{\ensuremath{l}}
+\newcommand{\windex}{\ensuremath{i}}
+\newcommand{\kdf}{\ensuremath{H}} % key derivation function
+
+% from Bellare, Hoang, and Rogaway - plaintext
+\newcommand{\func}{\ensuremath{f}}
+\newcommand{\inp}{\ensuremath{x}}
+\newcommand{\outp}{\ensuremath{y}}
+% from Bellare, Hoang, and Rogaway - garbling
+\newcommand{\gbscheme}{\ensuremath{\mathcal{G}}}
+\newcommand{\gfunc}{\ensuremath{F}}
+\newcommand{\eninp}{\ensuremath{e}}
+\newcommand{\deinp}{\ensuremath{d}}
+\newcommand{\ginp}{\ensuremath{X}}
+\newcommand{\goutp}{\ensuremath{Y}}
+\newcommand{\gb}{\ensuremath{\algfont{Gb}}}
+\newcommand{\en}{\ensuremath{\algfont{En}}}
+\newcommand{\ev}{\ensuremath{\algfont{Ev}}}
+\newcommand{\de}{\ensuremath{\algfont{De}}}
+% for additional definitions
+\newcommand{\gbinp}{\ensuremath{\algfont{GbInp}}}
+\newcommand{\gbcirc}{\ensuremath{\algfont{GbCirc}}}
+\newcommand{\aux}{\ensuremath{a}}
+
+%Aliases for pad
+\newcommand{\Fpake}{\ensuremath{FpwKE}}
+\newcommand{\Fipake}{\ensuremath{\FiPAKE}}
+\newcommand{\Flipake}{\FliPAKE}
+\newcommand{\FPAKE}{\FAKE}
+\newcommand{\fPAKE}{\FAKE}
+\newcommand{\UCshort}{\UC}
+\newcommand{\CRS}{CRS}
+
+% terminology
+\newcommand{\password}{pass-string\xspace}
+\newcommand{\passwords}{{\password}s\xspace}
+\newcommand{\Password}{Pass-string\xspace}
+\newcommand{\Passwords}{{\Password}s\xspace}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "../main"
+%%% End: 
