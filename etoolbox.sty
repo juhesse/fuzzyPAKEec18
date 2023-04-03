@@ -1653,7 +1653,7 @@
 
 % {<environment>}{<code>}
 
-\newrobustcmd{\AtBeginEnvironment}[1]{%
+\renewrobustcmd{\AtBeginEnvironment}[1]{%
   \csgappto{@begin@#1@hook}}
 
 \patchcmd\begin
@@ -1667,7 +1667,7 @@
 
 % {<environment>}{<code>}
 
-\newrobustcmd{\AtEndEnvironment}[1]{%
+\renewrobustcmd{\AtEndEnvironment}[1]{%
   \csgappto{@end@#1@hook}}
 
 \patchcmd\end
@@ -1681,7 +1681,7 @@
 
 % {<environment>}{<code>}
 
-\newrobustcmd{\BeforeBeginEnvironment}[1]{%
+\renewrobustcmd{\BeforeBeginEnvironment}[1]{%
   \csgappto{@beforebegin@#1@hook}}
 
 \pretocmd\begin
@@ -1693,7 +1693,7 @@
 
 % {<environment>}{<code>}
 
-\newrobustcmd{\AfterEndEnvironment}[1]{%
+\renewrobustcmd{\AfterEndEnvironment}[1]{%
   \csgappto{@afterend@#1@hook}}
 
 \patchcmd\end

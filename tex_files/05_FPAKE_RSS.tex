@@ -341,7 +341,7 @@ When using the MDS code--based \RSS which is described in Lemma~\ref{MDSisSepara
 We present our construction in terms of \RSS, but we could instead present this construction using information reconciliation. 
 The syndrome construction of secure sketches~\ref{MDSisSeparableRSS} can also be used here instead of the code-offset construction.
 
-\subsection{Security of {$\PfakeRSS$}} 
+\subsection{Security of {$\PfakeRSS$}}\label{sec:secrssfpake}
 We show that our protocol realizes functionality $\FFAKE^M$ in the $\Flipake$-hybrid model. In a nutshell, the idea is to simulate without the \passwords by adjusting the character keys outputted by $\Flipake$ to the mask of the \passwords, which is leaked by $\FFAKE^M$. 
 
 %\expl{Old version for an $(\pwlen,k)$-code: Decoding can correct up to $\lfloor (\pwlen-k)/2\rfloor$ errors, so we need $\delta=\lfloor (\pwlen-k)/2\rfloor+1$. Also, the code can detect up to $\pwlen-k$ errors, so we similarly need $\gamma=\pwlen-k+1=d$.}

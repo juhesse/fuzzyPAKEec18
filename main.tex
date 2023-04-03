@@ -37,6 +37,8 @@
   \toggletrue{llncs}
 }
 
+
+
 %
 % Document class
 %
@@ -56,7 +58,7 @@
 \makeatletter
 %\def\tableofcontents{\def\authcount##1{\setcounter{auco}{##1}\setcounter{@auth}{1}}\@starttoc{toc}}
 \makeatother
-
+\usepackage[framemethod=tikz,xcolor=true]{mdframed}
 %
 % Custom header
 %
@@ -71,6 +73,7 @@
 
 \title{Fuzzy Password-Authenticated Key Exchange}
 \titlerunning{Fuzzy Password-Authenticated Key Exchange}
+
 
 \iftoggle{anonymous}{
   \author{}

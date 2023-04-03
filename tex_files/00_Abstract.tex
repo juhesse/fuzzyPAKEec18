@@ -1,7 +1,6 @@
 % !TeX root = ../main.tex
 % !TEX root = ../main.tex
 % !TEX spellcheck = en-US
- 
 Consider key agreement by two parties who start out knowing a common secret (which we refer to as ``\password'', a generalization of ``password''),
 but face two complications: 
 (1) the \password may come from a low-entropy distribution, and 
@@ -20,3 +19,9 @@ The first construction achieves our \FAKE definition for any (efficiently comput
 It uses Yao's garbled circuits in a way that is only two times more costly than their use against semi-honest adversaries, but that guarantees security against malicious adversaries.
 The second construction is more efficient, but achieves our \FAKE definition only for \passwords with low Hamming distance.
 It builds on very simple primitives: robust secret sharing and \PAKE.
+
+\begin{mdframed}[tikzsetting={draw=red,ultra thick},skipabove=5pt]
+\begin{minipage}{\textwidth}
+ \textbf{Disclaimer:} Theorem \ref{theorem:fake2} in Section \ref{sec:secrssfpake} is not correct (thanks to Johannes Ernst from University St. Gallen, CH, for pointing this out to us): a man-in-the-middle attacker can test individual password bits, and the RSS-based fuzzy PAKE construction hence is not secure. We will soon update this document with information on how to fix the protocol to prevent these attacks. 
+\end{minipage}
+\end{mdframed}
